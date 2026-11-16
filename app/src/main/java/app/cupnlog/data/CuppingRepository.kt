@@ -85,7 +85,8 @@ class CuppingRepository(context: Context) {
         }
     }
 
-    private companion object {
+    companion object {
+        /** Cap for the participant display name, mirrored by the Settings field. */
         const val MY_NAME_MAX_LENGTH = 40
     }
 }

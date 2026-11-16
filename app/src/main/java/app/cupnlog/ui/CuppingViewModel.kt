@@ -9,6 +9,7 @@ import app.cupnlog.data.CoffeeEntry
 import app.cupnlog.data.CupRating
 import app.cupnlog.data.CuppingDraft
 import app.cupnlog.data.CuppingPlan
+import app.cupnlog.data.CuppingRepository
 import app.cupnlog.data.CuppingTimeline
 import app.cupnlog.data.RatingField
 import app.cupnlog.data.SavedSession
@@ -240,12 +241,19 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         initialValue = "",
     )
 
-    /** This device's participant display name (stamped into shared payloads). */
-    val myName: StateFlow<String> = repository.myName.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = "",
-    )
+    /**
+     * This device's participant display name (stamped into shared payloads).
+     * Held in a plain StateFlow instead of piping DataStore straight into the
+     * Settings text field: a disk round-trip per keystroke lagged behind fast
+     * typing, so keystrokes composed against a stale value and in-flight
+     * writes landed out of order ("Arthur" came out as "ruA"). Hydrated once
+     * from the store at init; afterwards this flow is authoritative and every
+     * edit persists in the background.
+     */
+    private val _myName = MutableStateFlow("")
+
+    /** The display name the Settings field edits (synchronous, see [_myName]). */
+    val myName: StateFlow<String> = _myName
 
     fun setSoundOn(enabled: Boolean) {
         viewModelScope.launch { repository.setSoundOn(enabled) }
@@ -255,12 +263,21 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.setVibrateOn(enabled) }
     }
 
-    /** This device's participant display name (stamped into shared payloads). */
+    /**
+     * Sets the participant display name. The field-visible value applies
+     * synchronously — capped like the stored copy, but not trimmed: a live
+     * trim would swallow a trailing space mid-typing. The persisted copy is
+     * trimmed and written in the background.
+     */
     fun setMyName(name: String) {
+        _myName.value = name.take(CuppingRepository.MY_NAME_MAX_LENGTH)
         viewModelScope.launch { repository.setMyName(name) }
     }
 
     init {
+        // Load the persisted profile name once; afterwards the local flow is
+        // authoritative (see _myName) so typing never waits on disk.
+        viewModelScope.launch { _myName.value = repository.myName.first() }
         viewModelScope.launch {
             while (isActive) {
                 refreshElapsed()
