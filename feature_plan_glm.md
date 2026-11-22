@@ -1,4 +1,4 @@
-# CofCup — feature plan (v3, phase 4 onwards; trimmed 2026-11-13, amended 2026-11-21)
+# CofCup — feature plan (v3, phase 4 onwards; trimmed 2026-11-13, amended 2026-11-22)
 
 Planning document. Phases 0–3 are implemented and committed, so this file now
 carries **only phase 4 and beyond**. Facts from earlier phases that phase 4
@@ -24,22 +24,32 @@ the primary transport**, with the phase-3 **QR path kept as an
 always-available fallback**. Continuous/live sync stays out of scope (see
 §1.4, §5.8, §9).
 
-**Implementation status (2026-11-21, reconciled 2026-11-22).** Phase 4 is
+**Implementation status (2026-11-22).** Phase 4 is
 implemented on `dev`: `ShareCodec` ratings + group_results
 encode/decode/validation (§5.1, §5.3), the `share_notes` preference + Settings
-toggle (§5.2), the Nearby Connections transport
+toggle (Settings is reachable from Home and live-session screens; §5.2), the
+Nearby Connections transport
 (`data/NearbyExchange.kt`, §5.8), the host **Collect** and guest **Send**
 screens (wireless primary + QR fallback), the ratings / merged-results confirm
 surfaces, and the rater-aware comparison card backed by the display-average
 helper `data/RatingAverages.kt` (§5.6). Unit tests green:
 `RatingAverageTest` (8), `RatingMergeTest` (10), `ShareCodecTest` (30, incl.
-the new kinds), every existing suite passes. The 2026-11-22 reconciliation
-closed: the guest now accepts its connection (so the broadcast can arrive), the
-scanner carries `returnTo` back to collect/send, wireless re-submission
-replaces the pending set, unknown-session payloads are refused up front, both
-share screens expose the notes toggle, and the merge/reveal rules moved into
-`data/RatingMerge.kt` with tests. **Remaining: the two-device manual pass**
-(Nearby on two real phones; QR fallback on the emulator). `gradlew` also had its
+the new kinds), every existing suite passes in the last recorded test run. The
+2026-11-22 audit follow-ups now use Nearby `P2P_STAR` for multiple guests,
+scope wireless payloads to the session currently selected on both sides,
+replace prior ratings with empty re-submissions and complete group-results
+snapshots, reject reveal mappings whose coffee count differs from `cupCount`,
+and read the latest sound/vibration settings during a live session. The scanner
+preserves `returnTo`, both share screens expose the notes toggle, and both sides
+accept the Nearby connection so the guest can receive the broadcast.
+
+**Still open in the current code:** blind StartCheck still renders each
+coffee's color and label, and the finished screen still offers local
+identification for a joined blind session. Both conflict with the blind rules
+in §6; fix these before treating the blind identity audit as complete.
+**Validation remaining:** the real two-device pass (Nearby on two phones;
+QR fallback on the emulator) and the phase-3 scanner/https-entry device check.
+GitHub Pages must be enabled for verified App Links. `gradlew` has its
 executable bit restored so the wrapper runs on macOS.
 
 ## 1. Settled decisions (all standing; numbering matches v2)
@@ -249,8 +259,10 @@ broadcasts once); the QR codec below is unchanged and remains the
   sid`; reject other-event payloads ("Ratings from a different cupping.");
   reject unknown versions; keep positions inside 1…`cupCount`; merge
   **idempotently by `raterId`** (a re-scan replaces that rater's previous
-  set; duplicate confirmation on re-submission). Merges only happen through
-  the confirmed preview — never auto-merged.
+  set, including when the new set is empty; duplicate confirmation on
+  re-submission). Nearby screens additionally require the payload `sid` to
+  match the session currently selected on that screen. Merges only happen
+  through the confirmed preview — never auto-merged.
 - Tolerant granularity: a malformed rating entry skips the entry, not the
   payload. Rater id/name/notes caps per the existing bound discipline; the
   bomb cap and the ~2 KB QR guard carry over.
@@ -275,8 +287,10 @@ broadcasts once); the QR codec below is unchanged and remains the
   notes included or not; confirm applies the merge (replace-per-`raterId`).
 - Re-submitting the same rater replaces their previous set (idempotent) and the
   card/status says the set was updated — the same rule whether it arrives
-  wirelessly or by QR. A payload for another cupping is refused up front
-  (`DIFFERENT_EVENT`), not queued as a dead card.
+  wirelessly or by QR; an empty set clears that rater's prior entries. A
+  payload for another cupping is refused up front (`DIFFERENT_EVENT`), not
+  queued as a dead card. Nearby payloads must match the selected Collect
+  session before a card appears.
 
 ### 5.5 Broadcast round (decision 6 — with reveal folded in)
 
@@ -292,7 +306,12 @@ broadcasts once); the QR codec below is unchanged and remains the
   and `revealed = true`; each guest's import then backfills the mapping into
   their copy **and sets `revealedAtMs`** — the same effect as a dedicated
   reveal payload, without a new kind. This holds identically whether the
-  payload arrives wirelessly or by QR.
+  payload arrives wirelessly or by QR. The mapping must contain exactly
+  `cupCount` coffees; a partial or oversized mapping is ignored and does not
+  stamp the reveal.
+- `group_results` is a complete snapshot. A guest replaces all remote rater
+  entries with the snapshot while preserving this device's own ratings and
+  notes, including when a remote rater has no remaining entries.
 - Before a reveal is included, guests' comparison views use Cup N labels; a
   guest who never receives a reveal keeps an anonymous copy with "Ask the
   host for the reveal." (Rather than inventing names.)
@@ -351,7 +370,8 @@ Replaces the two-QR collect-then-broadcast dance with a single one-shot
 exchange at session end. **Continuous/live sync is explicitly out of scope**
 (a guest's ratings stay hidden until the session's end).
 
-- **Primary: Nearby Connections.** `data/NearbyExchange.kt` wraps it.
+- **Primary: Nearby Connections.** `data/NearbyExchange.kt` wraps it using
+  `P2P_STAR`, with the host as hub and multiple tasters as guests.
   - Collect: the host advertises; each guest connects once and sends the
     existing ratings payload over the connection; the host confirms it on a
     pending card (replace-per-`raterId`, never auto-applied).
@@ -364,6 +384,9 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   - Payload is the **existing codec output** — no new encoding, no chunking.
   - Guest anonymity holds: guests send ratings only and receive merged
     results only after the host's broadcast.
+  - The host accepts ratings only for the currently selected Collect session;
+    the guest accepts results only for the currently selected Send session.
+    A nearby device advertising another event cannot cross-apply results.
 - **Always-on fallback: QR.** Every wireless action also offers "Scan/share
   QR instead": the host scans a taster's ratings QR (through
   `handleIncoming → ImportPreview`), and the guest can scan the host's
@@ -386,6 +409,8 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   coffee total at all (see AGENTS.md); don't reintroduce one.
 - Chimes fire only when the timer itself advances; skipped steps stay silent
   (shell owns this — phase 4 must not touch it).
+- Sound and vibration preference changes take effect immediately during an
+  active session; they do not wait for the next session.
 - Sessions save onDone only — planned row converted in place when one
   exists; save-once semantics owned by the VM.
 - 200-session cap, `org.json` only, single `CuppingViewModel` + sealed
@@ -396,7 +421,9 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   arrived on.
 - Blind surfaces render cup identity only through `data/Blind.kt` helpers
   (`blindedByPosition()`, `BlindCupDisplay`) — no names/colours/labels in
-  copy, content descriptions, or previews pre-reveal.
+  copy, content descriptions, or previews pre-reveal. StartCheck follows this
+  rule too. Local identify/reveal is only for the host's own blind session;
+  joined blind copies wait for a confirmed host `group_results` reveal.
 
 ## 7. Unit tests (pure JUnit, `app/src/test`; phase 4 scope)
 
@@ -407,15 +434,15 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
 - Payload validation: bounded sizes, position range vs `cupCount`, rater
   id/name/notes caps, decompression-bomb cap; oversized payload → scores
   only / text fallback.
-- Merge idempotency (re-submission replaces per `raterId`); other-event
-  payload rejection; replace-per-rater with `shareNotes=false` vs `true`
-  surfaces.
+- Merge idempotency, including empty-set replacement per `raterId`; full
+  group-results snapshots replace remote entries and preserve local ones;
+  other-event and wrong-current-session payload rejection.
 - Display-average helper rounding (`HALF_UP` precedent; representable
   values — see the notes in `CuppingMathTest` about `BigDecimal(Double)`
   binaries).
-- Reveal transitions: guest reveal-backfill on import sets `revealedAtMs`
-  exactly once; "ask the host" copy state before; revealed stays
-  irreversible.
+- Reveal transitions: exact-size group mapping only; guest reveal-backfill on
+  import sets `revealedAtMs` exactly once; joined sessions cannot use local
+  identify; "ask the host" copy state before; revealed stays irreversible.
 - Existing suites (`ShareCodecTest`, `HistoryCodecTest`, `CupRatingTest`,
   `BlindRedactionTest`, …) must keep passing; extend `ShareCodecTest` for the
   new kinds.
@@ -459,17 +486,13 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
 
 ## 10. Where to start, when the go is given
 
-Phase 4 is the only remaining phase; order within it:
+The phase-4 feature implementation is in place. Before treating its blind
+identity rules as complete or closing the phase:
 
-1. `ShareCodec` ratings + group_results encode/decode + validation (+ tests).
-2. `shareNotes` preference + Settings/share-screen toggle.
-3. Nearby transport module (`data/NearbyExchange.kt`) with the shared confirm
-   rule on the collect/send screens; QR fallback kept intact.
-4. Collect + Broadcast over the transport (replacing the scan flow), with
-   replace-per-rater merge and guest reveal-backfill.
-5. Comparison view + display-average helper (+ tests).
-6. Two-device manual pass (Nearby on two real phones; QR fallback on
-   emulator) — once GitHub Pages is enabled and the phase-3 two-device check
-   is done (see status above).
-
-Each step leaves the app fully working; step 1–2 alone are shippable.
+1. Hide coffee labels and colors on StartCheck when the plan is blind; render
+   position-only cups there.
+2. Remove the local identify/reveal action for joined blind sessions, and
+   enforce the host-only reveal rule in the ViewModel/domain path.
+3. Complete the manual device checks listed in §8: Nearby on two real phones,
+   the QR fallback on an emulator, and the phase-3 scanner/https-entry flow
+   after GitHub Pages is enabled.
