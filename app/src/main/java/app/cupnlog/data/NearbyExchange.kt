@@ -84,7 +84,7 @@ class NearbyExchange(context: Context) {
             name,
             SERVICE_ID,
             connectionLifecycleCallback,
-            AdvertisingOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT).build(),
+            AdvertisingOptions.Builder().setStrategy(Strategy.P2P_STAR).build(),
         ).addOnFailureListener { e ->
             advertising = false
             listener.onFailure(e.message ?: "Couldn't start sharing.")
@@ -112,7 +112,7 @@ class NearbyExchange(context: Context) {
         client.startDiscovery(
             SERVICE_ID,
             endpointDiscoveryCallback,
-            DiscoveryOptions.Builder().setStrategy(Strategy.P2P_POINT_TO_POINT).build(),
+            DiscoveryOptions.Builder().setStrategy(Strategy.P2P_STAR).build(),
         ).addOnFailureListener { e ->
             discovering = false
             listener.onFailure(e.message ?: "Couldn't look for the host.")
