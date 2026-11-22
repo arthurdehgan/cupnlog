@@ -32,14 +32,14 @@ object RatingMerge {
         val accepted = incoming
             .filter { it.cup in 0 until cupCount }
             .map { it.copy(raterId = raterId, rater = raterName) }
-        val raterIds = accepted.map { it.raterId }.toSet()
-        return (current.filterNot { it.raterId in raterIds } + accepted).sortedBy { it.cup }
+        return (current.filterNot { it.raterId == raterId } + accepted).sortedBy { it.cup }
     }
 
     /**
-     * Merges everyone else's entries into a guest's copy. This device's own
-     * entries are kept untouched (decision 8: own ratings + notes stay local,
-     * even when they were shared without notes).
+     * Replaces everyone else's entries from a complete group-results snapshot
+     * in a guest's copy. This device's own entries are kept untouched (decision
+     * 8: own ratings + notes stay local, even when they were shared without
+     * notes).
      */
     fun mergeOthers(
         current: List<CupRating>,
@@ -47,9 +47,9 @@ object RatingMerge {
         myId: String,
         cupCount: Int,
     ): List<CupRating> {
+        val mine = current.filter { it.raterId == myId }
         val others = incoming.filter { it.raterId != myId && it.cup in 0 until cupCount }
-        val raterIds = others.map { it.raterId }.toSet()
-        return (current.filterNot { it.raterId in raterIds } + others).sortedBy { it.cup }
+        return (mine + others).sortedBy { it.cup }
     }
 
     /**
