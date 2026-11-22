@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -72,6 +73,9 @@ fun HomeScreen(vm: CuppingViewModel) {
                 actions = {
                     IconButton(onClick = { vm.openHistory() }) {
                         Icon(Icons.Default.History, contentDescription = "Session history")
+                    }
+                    IconButton(onClick = { vm.openSettings(Screen.Home) }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
             )

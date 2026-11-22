@@ -49,7 +49,11 @@ sealed interface Screen {
 
     data object LiveSession : Screen
     data object Ratings : Screen
-    data object Settings : Screen
+
+    /** `returnTo` keeps `handleBack()` sensible: the gear on the live screens
+     *  returns to the session, the one on Home returns to Home. */
+    data class Settings(val returnTo: Screen = Screen.LiveSession) : Screen
+
     data object History : Screen
     data class SessionDetail(val sessionId: String) : Screen
 
@@ -514,9 +518,9 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         _screen.value = Screen.SessionDetail(sessionId)
     }
 
-    /** Gear icon on the live-session screens. */
-    fun openSettings() {
-        _screen.value = Screen.Settings
+    /** Gear icon on the live-session screens and on Home. */
+    fun openSettings(returnTo: Screen = Screen.LiveSession) {
+        _screen.value = Screen.Settings(returnTo)
     }
 
     /** "Rate" chip on the live-session screens. */
@@ -593,8 +597,8 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
                 }
                 true
             }
-            Screen.Settings -> {
-                _screen.value = Screen.LiveSession
+            is Screen.Settings -> {
+                _screen.value = current.returnTo
                 true
             }
             Screen.Ratings -> {

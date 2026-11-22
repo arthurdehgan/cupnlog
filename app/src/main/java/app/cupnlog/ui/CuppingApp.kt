@@ -23,7 +23,7 @@ fun CuppingApp() {
         is Screen.StartCheck -> StartCheckScreen(vm)
         Screen.LiveSession -> SessionScreen(vm)
         Screen.Ratings -> RatingsScreen(vm)
-        Screen.Settings -> SettingsScreen(vm)
+        is Screen.Settings -> SettingsScreen(vm)
         Screen.History -> HistoryScreen(vm)
         // `screen` is a delegated property, so copy it into a local for a stable smart cast.
         is Screen.SessionDetail -> SessionDetailScreen(vm, s.sessionId)
