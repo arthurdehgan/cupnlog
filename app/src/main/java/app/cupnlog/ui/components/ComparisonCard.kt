@@ -149,7 +149,7 @@ private fun CupComparisonRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 RatingField.entries
-                    .filter { it != RatingField.OVERALL }
+                    .filter { it != RatingField.OVERALL && it != RatingField.DRY_AROMA }
                     .forEach { field ->
                         MiniChip(
                             label = field.label,
@@ -158,6 +158,11 @@ private fun CupComparisonRow(
                         )
                     }
             }
+            Text(
+                "Dry aroma: " + (mine.dryAroma?.let { "$it / 10" } ?: "not rated"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (mine.notes.isNotBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(mine.notes, style = MaterialTheme.typography.bodySmall)

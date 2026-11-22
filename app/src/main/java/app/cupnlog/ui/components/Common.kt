@@ -275,7 +275,7 @@ private fun CoffeeLine(position: Int, coffee: CoffeeEntry, rating: CupRating?) {
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 RatingField.entries
-                    .filter { it != RatingField.OVERALL }
+                    .filter { it != RatingField.OVERALL && it != RatingField.DRY_AROMA }
                     .forEach { field ->
                         ScoreSquare(
                             field = field,
@@ -284,6 +284,12 @@ private fun CoffeeLine(position: Int, coffee: CoffeeEntry, rating: CupRating?) {
                         )
                     }
             }
+            Text(
+                "Dry aroma: " + (rating.dryAroma?.let { "$it / 10" } ?: "not rated"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             if (rating.notes.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(rating.notes, style = MaterialTheme.typography.bodySmall)

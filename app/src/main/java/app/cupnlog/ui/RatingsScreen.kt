@@ -196,7 +196,7 @@ fun RatingsScreen(vm: CuppingViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             } else {
-                RatingField.entries.forEach { field ->
+                RatingField.entries.filter { it != RatingField.DRY_AROMA }.forEach { field ->
                     CategoryRow(
                         plan = plan,
                         field = field,
@@ -397,6 +397,13 @@ private fun CupRatingEditor(
                     "Attributes",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "Dry aroma from preparation: " +
+                        (rating?.dryAroma?.let { "$it / 10" } ?: "not rated"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
                 listOf(
                     RatingField.AROMA,

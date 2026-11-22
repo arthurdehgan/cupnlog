@@ -55,11 +55,12 @@ executable bit restored so the wrapper runs on macOS.
 
 ## 1. Settled decisions (all standing; numbering matches v2)
 
-1. **Rating model**: SCA-*like*, not full SCA — per cup, six attributes rated
-   1–10 (Aroma, Flavor, Acidity, Sweetness, Mouthfeel, Aftertaste) that are
-   purely informational, plus a **separate, strictly manual Overall (1–10)**.
-   No computed overall from the attributes — on any screen, in any payload,
-   ever. Rating is optional; free-text notes per cup.
+1. **Rating model**: SCA-*like*, not full SCA — per cup, six brewed attributes
+   rated 1–10 (Aroma, Flavor, Acidity, Sweetness, Mouthfeel, Aftertaste), a
+   separate optional Dry Aroma intensity score (1–10) from preparation, and a
+   **separate, strictly manual Overall (1–10)**. No computed overall from any
+   other score — on any screen, in any payload, ever. Rating is optional;
+   free-text notes per cup.
 2. **Saved setups** appear on a **Home row** *and* carry a **"Planned" badge
    in History**. (Background for phase 4: the planned→done lifecycle below
    means the host's session id uniquely identifies an event.)
@@ -157,6 +158,7 @@ script. **All of the below already exists in code** (`Models.kt`,
     { "cup": 0,
       "raterId": "4f8b…",                    // stable participant id
       "rater": "Arthur",                     // display name at export time
+      "dryAroma": 7,                          // optional preparation score
       "aroma": 8, "flavor": 8, "acidity": 7, "sweetness": 8, "mouthfeel": 7, "aftertaste": 8,
       "overall": 8,                          // strictly manual, never derived
       "notes": "florals, tea-like" }
@@ -169,8 +171,8 @@ script. **All of the below already exists in code** (`Models.kt`,
 - **Overall is manual only.** Never computed from the six attributes, on any
   screen, in any payload, ever. (A display *average across raters* of manual
   overalls is fine — see §5.6.)
-- **"Rated" definition**: a cup counts as rated if *any* score (attribute,
-  overall, or notes) exists. Nothing gates the Done step on ratings.
+- **"Rated" definition**: a cup counts as rated if *any* score (Dry Aroma,
+  brewed attribute, Overall, or notes) exists. Nothing gates Done on ratings.
 - **Rater identity**: two persisted DataStore preferences in the same store —
   `my_id` (random UUID, generated on first use) and `my_name`. Locally stored
   ratings carry `raterId` always; `rater` display name is stamped from
@@ -235,12 +237,12 @@ broadcasts once); the QR codec below is unchanged and remains the
 
 ```
 {"v":1,"kind":"ratings","sid":"<host session id>","rater":{"id":"…","name":"…"},"notesShared":true,
-"rs":[{"c":0,"ar":8,"f":8,"a":7,"sw":8,"m":7,"at":8,"o":8,"n":"…"}]}
+"rs":[{"c":0,"da":7,"ar":8,"f":8,"a":7,"sw":8,"m":7,"at":8,"o":8,"n":"…"}]}
 ```
 
-- Attributes + manual overall + notes; **only** the sharing device's own set
-  (one rater per payload). Wrapped in the same https App Link; the three
-  accepted incoming forms decode identically.
+- Dry Aroma + brewed attributes + manual overall + notes; **only** the sharing
+  device's own set (one rater per payload). Wrapped in the same https App Link;
+  the three accepted incoming forms decode identically.
 - `notesShared` reflects the per-person toggle (default **on**, decision 8):
   the owning device always shows its own notes locally; merged devices see
   notes unless a participant chose to exclude theirs.
@@ -432,7 +434,7 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
 
 ## 7. Unit tests (pure JUnit, `app/src/test`; phase 4 scope)
 
-- Codec ratings/group_results round-trip; version/kind rejection; blind
+- Codec ratings/group_results round-trip including Dry Aroma; version/kind rejection; blind
   identity fields injected into a ratings payload rejected/ignored.
 - Entry-form equivalence: https App-Link URL, `cofcup://import?d=…`, and bare
   `d=` payload all decode to the same result after validation.
@@ -489,16 +491,14 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
 - Post-reveal re-hide / re-blind reuse — out of v1 (a duplicate setup is the
   workaround, recorded for later).
 
-### Ideas to shape (captured 2026-11-22)
+### Ideas to shape and recent implementations (captured 2026-11-22)
 
-- **Pre-cupping preparation:** Add an optional preparation stage before the
-  timer. The session context exists before the timer starts, and the user can
-  complete or skip optional preparation such as shuffling cups for a blind
-  tasting and smelling/rating dry aromas, then explicitly start the timer.
-  Work out how preparation state is created, discarded, and resumed, and how
-  dry-aroma ratings are entered outside the timer screen. Decide whether dry
-  aroma uses the existing Aroma score or needs its own rating; keep the timer's
-  `0:00` tied to water first hitting the grounds.
+- **Pre-cupping preparation (implemented 2026-11-22):** The existing pre-timer
+  session screen offers an optional blind-cup shuffle checklist and per-cup Dry
+  Aroma intensity scores. Scores are held in the ViewModel, discarded with an
+  abandoned unstarted session, and saved/shared with the completed session.
+  Dry Aroma is separate from brewed Aroma. The timer's `0:00` remains the first
+  pour; preparation state is not persisted across app restarts.
 - **Next-step timer note (implemented 2026-11-22):** The note names and explains
   the next step. Skipping advances the note with the timeline's new current
   step; when no next step remains, it shows that cupping is complete and saved.

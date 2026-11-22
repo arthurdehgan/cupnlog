@@ -120,6 +120,8 @@ enum class RatingMode(val label: String) {
 /** A session that has been set up but may not have started timing yet. */
 data class LiveSession(
     val plan: CuppingPlan,
+    /** Optional blind-cup shuffle checklist state for the pre-timer preparation. */
+    val blindCupsShuffled: Boolean = false,
     /** Epoch (elapsedRealtime) when the timer was started; null until the first pour. */
     val startedAtMs: Long? = null,
     /** Offset in ms added by skipped steps. */
@@ -403,6 +405,14 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Marks the optional blind-cup shuffle task in pre-cupping preparation. */
+    fun setBlindCupsShuffled(shuffled: Boolean) {
+        _live.update { session ->
+            session?.takeIf { it.startedAtMs == null && it.plan.blind }
+                ?.copy(blindCupsShuffled = shuffled) ?: session
+        }
+    }
+
     /** Remembers the Ratings screen's entry mode for this session. */
     fun setRatingMode(mode: RatingMode) {
         _ratingMode.value = mode
@@ -666,20 +676,26 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /** Called from the "Start cupping" button on the pre-start screen. */
     fun startLiveSession() {
         val current = _live.value
+        val plannedId = _plannedRunSource.value ?: editingPlannedSessionId
+        val resumePreparation = current != null && current.startedAtMs == null &&
+            !current.finished && current.plan == _draft.value.toPlan() &&
+            current.plannedSessionId == plannedId
         // (Re)create for every (re)start of an unstarted run: returning from
-        // the pre-start screen to StartCheck and starting again must build
-        // the session from the draft as it is now. A running or finished
-        // session is never touched here.
+        // the pre-start screen to StartCheck keeps preparation only when its
+        // plan is unchanged. Editing the draft creates a fresh session; a
+        // running or finished session is never touched here.
         if (current == null || current.startedAtMs == null) {
-            _live.value = LiveSession(
-                plan = _draft.value.toPlan(),
-                // Run started from a planned row: Done converts that row in place.
-                plannedSessionId = _plannedRunSource.value ?: editingPlannedSessionId,
-            )
-            _elapsedMs.value = 0
-            announcedStepStartSec = 0
-            _myRatings.value = emptyMap()
-            _ratingMode.value = RatingMode.BY_CUP
+            if (!resumePreparation) {
+                _live.value = LiveSession(
+                    plan = _draft.value.toPlan(),
+                    // Run started from a planned row: Done converts that row in place.
+                    plannedSessionId = plannedId,
+                )
+                _elapsedMs.value = 0
+                announcedStepStartSec = 0
+                _myRatings.value = emptyMap()
+                _ratingMode.value = RatingMode.BY_CUP
+            }
         }
         _screen.value = Screen.LiveSession
     }
@@ -1254,7 +1270,11 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
             _myRatings.value = emptyMap()
             _live.update { live ->
                 if (live == null || live.startedAtMs != null || live.finished) live
-                else live.copy(plan = plan, plannedSessionId = sessionId)
+                else live.copy(
+                    plan = plan,
+                    plannedSessionId = sessionId,
+                    blindCupsShuffled = false,
+                )
             }
         }
     }

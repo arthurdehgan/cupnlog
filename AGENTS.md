@@ -38,6 +38,8 @@
 - "Start Cupping" on Home runs the timer with no cups (`cupCount = 0`); such a session is stored in history as an **Empty Cupping Session**. Back from an unstarted session (or confirmed "End & discard") always lands on Home.
 - The live timer increments `extraOffsetMs` on skip; elapsed time = `SystemClock.elapsedRealtime() - start + offset`. Keep this model when touching timers.
 - Step chimes fire only when the **timer itself** enters a new step (`stepChimes` flow → sound + optional vibration); skipped steps stay silent (`announcedStepStartSec` guards it). Sound and vibration setting changes take effect during the active session. Don't chime on skip.
+- The pre-timer screen is the optional preparation stage. Dry aroma is a separate 1–10 score on `CupRating`, saved/shared with the session; it is entered before timing and does not replace brewed Aroma. Preparation state is ViewModel-only and is discarded with an abandoned unstarted session. Keep timer `0:00` at the first pour.
+- Shared rating records include optional `dryAroma` (`da` in `ShareCodec`) alongside brewed attributes, manual Overall, and consent-controlled notes. Existing payloads without it decode as unrated.
 
 ## Blind tasting rules
 

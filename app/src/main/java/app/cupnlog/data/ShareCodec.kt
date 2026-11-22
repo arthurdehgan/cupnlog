@@ -28,10 +28,10 @@ import java.util.zip.Inflater
  *    identify the joined copy locally or accept that reveal; the kind marks
  *    the row blind, not withheld data.
  *  - "ratings" (phase 4): one rater's own scores, guest → host, so the host
- *    can merge them. Carries attributes, the strictly manual Overall and,
- *    unless the rater opted out, notes. Injected coffee identity fields are
- *    ignored; coffee identities arrive in setup payloads and optional
- *    position mappings arrive in group_results.
+ *    can merge them. Carries the preparation-only Dry Aroma score, brewed
+ *    attributes, the strictly manual Overall and, unless the rater opted out,
+ *    notes. Injected coffee identity fields are ignored; coffee identities
+ *    arrive in setup payloads and optional position mappings in group_results.
  *  - "group_results" (phase 4): every rater's entries, host → guests, plus
  *    an optional blind reveal mapping (position → identity) that backfills a
  *    guest's copy and stamps its reveal. No new kind beyond this.
@@ -289,6 +289,7 @@ object ShareCodec {
     /** One cup's score entry, shared by "ratings" and "group_results". */
     private fun encodeRatingEntry(rating: CupRating, includeNotes: Boolean): JSONObject {
         val obj = JSONObject().put("c", rating.cup)
+        rating.dryAroma?.let { obj.put("da", it) }
         rating.aroma?.let { obj.put("ar", it) }
         rating.flavor?.let { obj.put("f", it) }
         rating.acidity?.let { obj.put("a", it) }
@@ -540,6 +541,7 @@ object ShareCodec {
                     cup = cup,
                     raterId = raterId,
                     rater = raterName,
+                    dryAroma = entry.optScoreOrNull("da"),
                     aroma = entry.optScoreOrNull("ar"),
                     flavor = entry.optScoreOrNull("f"),
                     acidity = entry.optScoreOrNull("a"),

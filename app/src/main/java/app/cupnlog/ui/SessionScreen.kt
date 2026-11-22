@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -48,6 +50,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +62,7 @@ import app.cupnlog.data.CupRating
 import app.cupnlog.data.CuppingPlan
 import app.cupnlog.data.CuppingStep
 import app.cupnlog.data.CuppingTimeline
+import app.cupnlog.data.RatingField
 import app.cupnlog.data.SavedSession
 import app.cupnlog.data.SessionOrigin
 import app.cupnlog.data.SessionStatus
@@ -66,6 +72,7 @@ import app.cupnlog.ui.components.BlindCoffeeListCard
 import app.cupnlog.ui.components.CoffeeListCard
 import app.cupnlog.ui.components.ConfirmDialog
 import app.cupnlog.ui.components.displaySessionName
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +106,7 @@ fun SessionScreen(vm: CuppingViewModel) {
                         when {
                             finished -> "Session complete"
                             running -> "Cupping in progress"
+                            session.plan.cupCount > 0 -> "Preparation"
                             else -> "Cupping"
                         }
                     )
@@ -189,6 +197,8 @@ fun SessionScreen(vm: CuppingViewModel) {
                     vm = vm,
                     plan = session.plan,
                     elapsedSec = elapsedSec,
+                    myRatings = myRatings,
+                    blindCupsShuffled = session.blindCupsShuffled,
                     plannedSetups = plannedSetups,
                     selectedSetupId = session.plannedSessionId,
                     // The picker is a quick-start convenience: a run started
@@ -229,6 +239,8 @@ private fun ReadyToStartContent(
     vm: CuppingViewModel,
     plan: CuppingPlan,
     elapsedSec: Long,
+    myRatings: Map<Int, CupRating>,
+    blindCupsShuffled: Boolean,
     plannedSetups: List<SavedSession>,
     selectedSetupId: String?,
     showSetupPicker: Boolean,
@@ -236,17 +248,79 @@ private fun ReadyToStartContent(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "Get everything ready",
+                if (plan.cupCount > 0) "Pre-cupping preparation" else "Get everything ready",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "\u2022 Heat water while you set up the cups and grind the coffee.\n" +
-                "\u2022 Place your cups in a row.\n" +
-                "\u2022 Press START as water first hits the grounds of the first coffee.",
+                if (plan.cupCount > 0) {
+                    "Preparation is optional. When ready, press Start cupping as water " +
+                        "first hits the grounds; that is 0:00."
+                } else {
+                    "\u2022 Heat water while you set up the cups and grind the coffee.\n" +
+                        "\u2022 Place your cups in a row.\n" +
+                        "\u2022 Press START as water first hits the grounds of the first coffee."
+                },
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+    if (plan.cupCount > 0) {
+        Spacer(modifier = Modifier.height(12.dp))
+        if (plan.blind) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Shuffle the cups",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            "Mix the labeled cups without looking at the labels.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Checkbox(
+                        checked = blindCupsShuffled,
+                        onCheckedChange = vm::setBlindCupsShuffled,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    "Dry aroma",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Smell the dry grounds and optionally rate aroma intensity from 1 to 10. " +
+                        "Use 1 for very faint and 10 for very intense. This is separate " +
+                        "from the brewed aroma score.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                repeat(plan.cupCount) { cup ->
+                    DryAromaPreparationRow(
+                        label = if (plan.blind) "Cup ${cup + 1}"
+                        else plan.coffees.getOrNull(cup)?.displayName ?: "Cup ${cup + 1}",
+                        score = myRatings[cup]?.dryAroma,
+                        onScore = { vm.setCupRatingScore(cup, RatingField.DRY_AROMA, it) },
+                    )
+                }
+            }
         }
     }
     Spacer(modifier = Modifier.height(16.dp))
@@ -294,6 +368,37 @@ private fun ReadyToStartContent(
     }
     Spacer(modifier = Modifier.height(16.dp))
     StepsCard(elapsedSec = elapsedSec, currentStep = null)
+}
+
+@Composable
+private fun DryAromaPreparationRow(
+    label: String,
+    score: Int?,
+    onScore: (Int) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                score?.let { "$it / 10" } ?: "Not rated",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Slider(
+            value = (score ?: 5).toFloat(),
+            onValueChange = { onScore(it.roundToInt()) },
+            valueRange = 1f..10f,
+            steps = 8,
+            modifier = Modifier.semantics {
+                contentDescription = "Dry aroma intensity for $label"
+                stateDescription = score?.let { "$it out of 10" } ?: "Not rated"
+            },
+        )
+    }
 }
 
 /** One saved setup on the pre-start "Cupping" screen: tap loads it into the
