@@ -54,8 +54,9 @@ object RatingMerge {
 
     /**
      * Blind reveal backfill: position-ordered identities replace the plan's
-     * coffees and `revealedAtMs` is stamped exactly once (a later group result
-     * only refreshes the coffees). A non-blind or un-revealed payload is a no-op.
+     * coffees and `revealedAtMs` is stamped exactly once. If this device already
+     * identified its own joined copy, keep that local mapping. Non-blind,
+     * already-revealed, or unrevealed payloads are no-ops.
      */
     fun applyReveal(
         session: SavedSession,
@@ -64,13 +65,14 @@ object RatingMerge {
         nowMs: Long,
     ): SavedSession {
         if (!revealed || revealCoffees.isNullOrEmpty() || !session.blind ||
+            session.revealedAtMs != null ||
             revealCoffees.size != session.plan.cupCount
         ) {
             return session
         }
         return session.copy(
             plan = session.plan.copy(coffees = revealCoffees),
-            revealedAtMs = session.revealedAtMs ?: nowMs,
+            revealedAtMs = nowMs,
         )
     }
 

@@ -24,13 +24,14 @@ import java.util.zip.Inflater
  * `kind` discriminates the payload:
  *  - "setup" / "blind_setup" (phase 3): a saved setup, host → guest. Both
  *    carry the full coffee identities (names, labels, colours) so the host can
- *    later include them in a confirmed group_results reveal. The joiner's
- *    copy stays blind and position-only until that reveal arrives; the kind
- *    marks the row blind, not withheld data.
+ *    later include them in a confirmed group_results reveal. The guest can
+ *    identify the joined copy locally or accept that reveal; the kind marks
+ *    the row blind, not withheld data.
  *  - "ratings" (phase 4): one rater's own scores, guest → host, so the host
  *    can merge them. Carries attributes, the strictly manual Overall and,
- *    unless the rater opted out, notes. Identity fields other than the rater
- *    envelope are ignored (identities only ever arrive via group_results).
+ *    unless the rater opted out, notes. Injected coffee identity fields are
+ *    ignored; coffee identities arrive in setup payloads and optional
+ *    position mappings arrive in group_results.
  *  - "group_results" (phase 4): every rater's entries, host → guests, plus
  *    an optional blind reveal mapping (position → identity) that backfills a
  *    guest's copy and stamps its reveal. No new kind beyond this.
@@ -404,7 +405,8 @@ object ShareCodec {
 
         val blind = json.optString("kind") == KIND_BLIND_SETUP
         // Both kinds decode identities the same way. A blind joined row keeps
-        // them private until the host's confirmed group_results reveal.
+        // them private on screen until it is locally identified or a confirmed
+        // group_results reveal arrives.
         val coffees = decodeCoffees(json.optJSONArray("co"), cupCount)
 
         return SharedSetup(

@@ -433,8 +433,6 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val session = repository.sessions.first().firstOrNull { it.id == sessionId }
                 ?: return@launch
-            // Joined copies get their identification from the host, never here.
-            if (session.origin == app.cupnlog.data.SessionOrigin.JOINED) return@launch
             _screen.value = Screen.IdentifyCups(sessionId = sessionId, returnTo = returnTo)
             if (session.revealedAtMs != null) {
                 _pendingMatch.value = session.plan.coffees.indices.associateWith { it }
@@ -468,7 +466,6 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val session = repository.sessions.first().firstOrNull { it.id == sessionId }
                 ?: return@launch
-            if (session.origin != SessionOrigin.OWN) return@launch
             val n = session.plan.cupCount
             if ((0 until n).any { match[it] == null } ||
                 match.values.any { it !in session.plan.coffees.indices } ||
@@ -940,9 +937,10 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * row of its own (own UUID in `id`, the host's id in `sessionRef`).
      * Blind payloads carry full identities (2026-11-13 decision), so the
      * host can later include them in a confirmed group-results reveal; the
-     * joined copy stays anonymous until then. Re-joining the same host session
-     * replaces the previous joined PLANNED copy (idempotent, keyed on
-     * `sessionRef` + `status=planned`).
+     * joined copy can identify locally after cupping or accept the host's
+     * confirmed group-results reveal. Re-joining the same host session replaces
+     * the previous joined PLANNED copy (idempotent, keyed on `sessionRef` +
+     * `status=planned`).
      */
     fun confirmImport() {
         val incoming = _incoming.value ?: return

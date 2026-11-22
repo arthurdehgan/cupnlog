@@ -42,8 +42,8 @@
 ## Blind tasting rules
 
 - In a blind session the **only** visible identity is the cup's left-to-right position ("Cup 1…N"). Names, colours and labels are private metadata — keep them out of labels, content descriptions and instruction copy on every pre-reveal surface, including StartCheck. `data/Blind.kt` is the only route through which blind surfaces render cup identity; use its helpers (`blindedByPosition()`, `BlindCupDisplay`).
-- End-of-session identification (`data/CupMatch.kt`) is for the user's own blind sessions: assign each cup position the label that was under it; confirming a complete bijection reorders the coffees so position and identity agree, then reveals. Joined blind copies remain anonymous until a confirmed `group_results` reveal arrives from the host; never offer local identification/reveal for a joined row. `revealedAtMs` is stamped exactly once — a later re-match only re-permutes.
-- Shared blind setups (`ShareCodec`) carry the **full coffee identities** so the host can later include the reveal mapping in `group_results`; the joiner's copy stays blind because `kind` marks the row blind, not because data is withheld. The joiner must not identify/reveal locally. Don't "fix" this back to position-only payloads.
+- End-of-session identification (`data/CupMatch.kt`) is available on both the host's own blind session and each guest's joined blind copy: assign each cup position the label that was under it; confirming a complete bijection reorders the coffees so position and identity agree, then reveals locally. A confirmed `group_results` reveal can also reveal an unidentified joined copy. If the guest already identified locally, preserve that local mapping when results arrive. `revealedAtMs` is stamped exactly once — a later re-match only re-permutes.
+- Shared blind setups (`ShareCodec`) carry the **full coffee identities** so guests can identify their own copy and the host can later include the reveal mapping in `group_results`; the joiner's copy stays blind because `kind` marks the row blind, not because data is withheld. Don't "fix" this back to position-only payloads.
 
 ## Share / join (QR & links)
 

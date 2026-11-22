@@ -560,8 +560,8 @@ private fun FinishedContent(
             plan.blind && !blindRevealed -> {
                 Text(
                     if (sessionOrigin == SessionOrigin.JOINED) {
-                        "Coffee names stay hidden until the host shares the reveal. " +
-                            "The session was saved to your history."
+                        "You can identify the cups on this device or accept a reveal " +
+                            "from the host. The session was saved to your history."
                     } else {
                         "Coffee names stay hidden until you identify the cups. The session " +
                             "was saved to your history."
@@ -595,9 +595,7 @@ private fun FinishedContent(
     // the escape hatches outlined below it. Identical rhythm in every variant
     // (blind, revealed, empty session); only which action is primary changes.
     Spacer(modifier = Modifier.height(24.dp))
-    if (plan.blind && !blindRevealed && sessionId != null &&
-        sessionOrigin == SessionOrigin.OWN
-    ) {
+    if (plan.blind && !blindRevealed && sessionId != null) {
         Button(
             onClick = { vm.openIdentifyCups(sessionId, Screen.LiveSession) },
             modifier = Modifier.fillMaxWidth(),

@@ -271,9 +271,11 @@ fun ImportPreviewScreen(vm: CuppingViewModel) {
                         OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                             Text(
                                 if (results.revealed) {
-                                    "Coffee identities will be revealed in your copy."
+                                    "Coffee identities from the host will be added unless " +
+                                        "you have already identified this copy."
                                 } else {
-                                    "Your copy stays anonymous until the host includes a reveal."
+                                    "You can identify cups on your own; the host may also " +
+                                        "include a reveal."
                                 },
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(16.dp),

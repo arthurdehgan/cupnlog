@@ -197,10 +197,9 @@ fun SavedSession.toCompleted(
 ): SavedSession = copy(plan = plan, status = SessionStatus.DONE, blind = plan.blind, ratings = ratings)
 
 /**
- * Explicit blind reveal for an owned session: identities become visible only
- * by a deliberate action, never automatically, and the reveal is not reversible.
- * Joined sessions wait for the host's group-results reveal. A second call (or a
- * call on a non-blind/joined session) is a no-op.
+ * Direct blind reveal for an owned planned session. Joined copies reveal by
+ * local matching after cupping or by accepting the host's group-results reveal.
+ * A second call (or a call on a non-blind/joined session) is a no-op.
  */
 fun SavedSession.reveal(nowMs: Long): SavedSession =
     if (origin == SessionOrigin.OWN && blind && revealedAtMs == null) {

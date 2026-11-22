@@ -43,9 +43,9 @@ and read the latest sound/vibration settings during a live session. The scanner
 preserves `returnTo`, both share screens expose the notes toggle, and both sides
 accept the Nearby connection so the guest can receive the broadcast.
 
-**Blind identity audit follow-ups implemented (2026-11-22):** StartCheck now
-renders blind cups by position only; joined blind copies cannot enter local
-identification, and the ViewModel/domain reveal paths enforce host-only reveal.
+**Blind identity audit follow-ups implemented (2026-11-22):** StartCheck renders
+blind cups by position only. Joined blind copies support local identification;
+later host results preserve the guest's local mapping.
 **Validation remaining:** the real two-device pass (Nearby on two phones;
 QR fallback on the emulator) and the phase-3 scanner/https-entry device check.
 GitHub Pages must be enabled for verified App Links. `gradlew` has its
@@ -102,11 +102,11 @@ Adopted from the deepseek review where they verified real behavior:
   **by `raterId`** (persisted random `my_id` + display name `my_name`) — two
   "Sam"s no longer collide, renames don't orphan ratings.
 - **Explicit reveal, never automatic** (deepseek §3.5): a blind session's
-  identities are revealed only by a deliberate action — the identify flow for
-  solo sessions, host-controlled for groups; persisted via `revealedAtMs`
-  exactly once, not reversible. A guest who never receives a reveal keeps an
-  anonymous copy with "Ask the host for the reveal" copy rather than invented
-  names.
+  identities are revealed only by a deliberate action. Hosts and guests can
+  identify their own copy locally; guests can also accept a host's confirmed
+  `group_results` reveal. A later host reveal must preserve an existing local
+  guest mapping. `revealedAtMs` is stamped exactly once; a later re-match only
+  re-permutes.
 - **Notes are shared on consent** (decision 8).
 - **DataStore write discipline**: ratings/notes are kept in the VM during a
   live session and written at Done / explicit save / screen exit — never on
@@ -128,8 +128,8 @@ Rejected — do not reintroduce:
 **Blind payloads carry the full coffee identities** (amended 2026-11-13): the
 joiner's blind copy renders positions only on every pre-reveal surface —
 because the `kind` marks the row blind, not because data is withheld — and the
-QR is the answer key for anyone who decodes it. Phase 4's `group_results`
-reveal mapping is the channel through which guests ever get a reveal.
+QR is the answer key for anyone who decodes it. Guests can identify their own
+copy after cupping or accept the host's `group_results` reveal.
 
 ## 3. Data model (authoritative)
 
@@ -212,8 +212,9 @@ script. **All of the below already exists in code** (`Models.kt`,
   "Copy link" + the bare code under the QR — the phase-4
   show-merged-results screen reuses this shape.
 - **Reveal plumbing**: `SavedSession.reveal(nowMs)` (idempotent; sets
-  `revealedAtMs` exactly once); solo reveal happens through the identify flow
-  (`IdentifyCups`); joined copies wait for the host's phase-4 broadcast.
+  `revealedAtMs` exactly once for an owned planned row); owned and joined done
+  rows can reveal through the identify flow (`IdentifyCups`). A confirmed host
+  broadcast can also reveal a joined copy that has not been identified locally.
 - **Replace-per-rater merge already exists in the VM**
   (`persistMyRatingsIfFinished`: `filterNot { it.raterId == myId } + mine`)
   — the ratings merge follows the same rule, whether it arrives over the
@@ -311,9 +312,11 @@ broadcasts once); the QR codec below is unchanged and remains the
 - `group_results` is a complete snapshot. A guest replaces all remote rater
   entries with the snapshot while preserving this device's own ratings and
   notes, including when a remote rater has no remaining entries.
-- Before a reveal is included, guests' comparison views use Cup N labels; a
-  guest who never receives a reveal keeps an anonymous copy with "Ask the
-  host for the reveal." (Rather than inventing names.)
+- Before a reveal, guests' comparison views use Cup N labels. Guests can
+  identify their own copy at any time after cupping; a confirmed host reveal
+  can fill the identities when they have not done so locally.
+- If a guest has already identified locally, a later `group_results` import
+  merges scores and notes while preserving that guest's cup mapping.
 - After reveal, group results stay read-only for guests in v1 because the
   ratings editor is only reachable from the live-session screens (a done row
   has no edit entry); solo ratings remain editable during their session.
@@ -421,8 +424,9 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
 - Blind surfaces render cup identity only through `data/Blind.kt` helpers
   (`blindedByPosition()`, `BlindCupDisplay`) — no names/colours/labels in
   copy, content descriptions, or previews pre-reveal. StartCheck follows this
-  rule too. Local identify/reveal is only for the host's own blind session;
-  joined blind copies wait for a confirmed host `group_results` reveal.
+  rule too. Both hosts and guests can locally identify their own blind session
+  copy after cupping; joined copies may alternatively receive the confirmed
+  host `group_results` reveal.
 
 ## 7. Unit tests (pure JUnit, `app/src/test`; phase 4 scope)
 
@@ -440,8 +444,8 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   values — see the notes in `CuppingMathTest` about `BigDecimal(Double)`
   binaries).
 - Reveal transitions: exact-size group mapping only; guest reveal-backfill on
-  import sets `revealedAtMs` exactly once; joined sessions cannot use local
-  identify; "ask the host" copy state before; revealed stays irreversible.
+  import sets `revealedAtMs` exactly once; joined sessions allow local identify;
+  later group results preserve the local mapping; revealed stays irreversible.
 - Existing suites (`ShareCodecTest`, `HistoryCodecTest`, `CupRatingTest`,
   `BlindRedactionTest`, …) must keep passing; extend `ShareCodecTest` for the
   new kinds.

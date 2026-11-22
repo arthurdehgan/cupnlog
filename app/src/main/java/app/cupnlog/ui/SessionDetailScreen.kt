@@ -140,8 +140,13 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
                 if (session.ratings.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Ask the host for the reveal. Until then cups stay at their " +
-                            "positions: the scores are still comparable.",
+                        if (session.origin == SessionOrigin.JOINED) {
+                            "Identify the cups on this device or accept a host reveal. " +
+                                "Scores stay tied to cup positions."
+                        } else {
+                            "Identify the cups to reveal their names. Scores stay tied " +
+                                "to cup positions."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -171,7 +176,7 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
-            if (session.blind && session.origin == SessionOrigin.OWN) {
+            if (session.blind) {
                 when {
                     // Done, not yet identified: the identification flow both
                     // orders the coffees into cup positions and reveals them.
@@ -209,7 +214,7 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
                     }
                     // Planned rows have no cupped ratings to align: the
                     // explicit reveal stays a direct action (not reversible).
-                    session.revealedAtMs == null -> {
+                    session.origin == SessionOrigin.OWN && session.revealedAtMs == null -> {
                         Button(
                             onClick = { confirmReveal = true },
                             modifier = Modifier
