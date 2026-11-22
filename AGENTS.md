@@ -12,8 +12,9 @@
   - `gradle :app:testDebugUnitTest`
 - Unit tests (pure JUnit, `app/src/test`, run all): `CuppingMathTest`,
   `CupColorsTest`, `HistoryCodecTest`, `BlindRedactionTest`, `PlanConversionTest`,
-  `CupMatchTest`, `CupRatingTest`, `ShareCodecTest`. A single class can be
-  selected with `--tests "app.cupnlog.CuppingMathTest"`. `HistoryCodecTest` and
+  `CupMatchTest`, `CupRatingTest`, `ShareCodecTest`, `RatingAverageTest`,
+  `RatingMergeTest`. A single class can be selected with
+  `--tests "app.cupnlog.CuppingMathTest"`. `HistoryCodecTest` and
   `ShareCodecTest` use the test-only `org.json:json` dependency (same API as the
   Android runtime).
 
@@ -47,16 +48,19 @@
 ## Share / join (QR & links)
 
 - `data/ShareCodec.kt` encodes everything moved between devices. The QR encodes an **https App Link whose query string is the whole payload** (`?v=1&d=base64url(deflate(json))`) — no backend; treat that as a hard design decision.
-- Three incoming forms decode identically everywhere: the https App Link, `cofcup://import?v=1&d=…`, and the bare `d=` code. All payloads are **untrusted**: strict version/kind checks, bounded sizes, decompression-bomb cap. Validation never auto-applies anything — the caller always shows a confirm preview (`ImportPreview`) first.
-- `kind` discriminates payloads (`"setup"`, `"blind_setup"`); `"ratings"` / `"group_results"` are phase 4 and rejected here.
+- Three incoming forms decode identically everywhere: the https App Link, `cofcup://import?v=1&d=…`, and the bare `d=` code. All payloads are **untrusted**: strict version/kind checks, bounded sizes, decompression-bomb cap. Validation never auto-applies anything — every path needs a confirm step first.
+- `kind` discriminates payloads: `"setup"` / `"blind_setup"` (host → guest), `"ratings"` (guest → host, one rater's own scores), `"group_results"` (host → guests, everyone's scores plus an optional blind reveal). No other kind exists; add one only by updating this list.
+- QR/paste confirmations go through `ImportPreview`; wireless confirmations follow the same rule on their own screens (a card with Add/Skip, or "Add results to my session"). Never merge on arrival, on any transport.
 
 ## Persistence & UI structure
 
 - History is a JSON array in **DataStore** (`CuppingRepository`, store `cupnlog_store`, key `history_v1`) parsed with `org.json`; decode failures return an empty list; capped at 200 sessions (`MAX_STORED_SESSIONS`). The same store holds the chime toggles (`sound_on_next_step` on by default, `vibrate_on_next_step` off) and the profile (`my_id` — random UUID generated on first use, `my_name`). There is no Room/DB and no serialization plugin — don't add either for this.
 - The history list doubles as the **planned-setups store**: rows are `SessionStatus.PLANNED` or `DONE` in the same array. Running a planned setup converts that row **in place** on Done (same id/`createdAtMs`, status → DONE) via `plannedSessionId`/`savedSessionId` — it doesn't spawn a second row.
-- Screens are one file per screen in `ui/`, orchestrated by a single `CuppingViewModel` (`Screen` sealed interface + `handleBack()`); no navigation-compose dependency. Multi-step screens carry a `returnTo` so back stays sensible when opened from multiple places (StartCheck, IdentifyCups, ShareSetup, ImportPreview). Settings is only reachable from the live-session screens (gear icon; back returns to LiveSession). Ratings has two entry modes (BY_CUP / BY_CATEGORY) that are session-scoped view-model state, never persisted; leaving Ratings after Done re-persists the edits.
+- Screens are one file per screen in `ui/`, orchestrated by a single `CuppingViewModel` (`Screen` sealed interface + `handleBack()`); no navigation-compose dependency. Multi-step screens carry a `returnTo` so back stays sensible when opened from multiple places (StartCheck, IdentifyCups, ShareSetup, ImportPreview, Scanner, CollectRatings, SendRatings). Settings is only reachable from the live-session screens (gear icon; back returns to LiveSession). Ratings has two entry modes (BY_CUP / BY_CATEGORY) that are session-scoped view-model state, never persisted; leaving Ratings after Done re-persists the edits.
+- The QR block is reusable (`ui/ShareQrBlock.kt`: QR card + share-as-text + copy-link + bare code); both the setup share and the ratings / merged-results screens use it. Phase-4 ratings exchange: `data/NearbyExchange.kt` (Nearby Connections, P2P_POINT_TO_POINT, host advertises, guest discovers and sends once), `data/RatingMerge.kt` (pure merge/reveal rules shared by every confirm path), `ui/CollectRatingsScreen.kt` (host), `ui/SendRatingsScreen.kt` (guest). Both sides accept in `onConnectionInitiated` — the initiator's `PayloadCallback` is registered there (play-services-nearby's `requestConnection` has no payload-callback parameter), so removing that accept breaks the guest's ability to receive the merged results.
 - On Home the launcher icon is rendered via AndroidView + ImageView: `painterResource()` would **crash** on the adaptive `mipmap` icon (this exact crash was fixed once — don't revert it).
 - Manifest: portrait-locked `singleTask` activity; deep links `cofcup://import` and the autoVerify https App Link land in `MainActivity` (the scanner screen never saves anything itself — payloads go through the view model's confirm preview); permissions are VIBRATE (chime) and CAMERA (in-app QR scanner), with `android.hardware.camera` marked `required="false"`. The session screen sets `view.keepScreenOn`. All intentional — ask before changing.
+- Phase 4 adds the Nearby runtime permissions (BLUETOOTH_SCAN/CONNECT/ADVERTISE on S+, `NEARBY_WIFI_DEVICES` on T+, `ACCESS_LOCAL_NETWORK` on 37+, coarse/fine location only on older levels) — requested by `nearbyRuntimePermissions()` when a collect/send screen opens; denial only disables wireless (the QR fallback stays). No INTERNET permission: the exchange is peer-to-peer.
 
 ## Commit hygiene
 

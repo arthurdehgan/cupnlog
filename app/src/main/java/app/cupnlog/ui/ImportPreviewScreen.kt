@@ -44,6 +44,7 @@ import app.cupnlog.ui.components.sessionSummary
 @Composable
 fun ImportPreviewScreen(vm: CuppingViewModel) {
     val incoming by vm.incoming.collectAsState()
+    val history by vm.history.collectAsState()
 
     Scaffold(
         topBar = {
@@ -160,6 +161,135 @@ fun ImportPreviewScreen(vm: CuppingViewModel) {
                         onClick = { vm.dismissImport() },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Cancel") }
+                }
+
+                is CuppingViewModel.IncomingShare.Ratings -> {
+                    val ratings = share.ratings
+                    val session = history.firstOrNull {
+                        it.id == ratings.hostSessionId || it.sessionRef == ratings.hostSessionId
+                    }
+                    if (session == null) {
+                        Text(
+                            "Can't add these ratings",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            ShareCodec.ShareError.DIFFERENT_EVENT.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("OK") }
+                    } else {
+                        if (ratings.raterName.isNotBlank()) {
+                            Text(
+                                "From ${ratings.raterName}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            session.plan.sessionName.ifBlank {
+                                "Cupping · ${session.plan.cupCount} cup" +
+                                    if (session.plan.cupCount == 1) "" else "s"
+                            },
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val cups = ratings.ratings.size
+                        Text(
+                            "$cups cup" + if (cups == 1) "" else "s" + " rated" +
+                                if (ratings.notesShared) " · notes included" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "These scores replace any earlier set from ${ratings.raterName.ifBlank { "this taster" }}.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.confirmImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Add to this session") }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Cancel") }
+                    }
+                }
+
+                is CuppingViewModel.IncomingShare.GroupResults -> {
+                    val results = share.results
+                    val session = history.firstOrNull {
+                        it.id == results.hostSessionId || it.sessionRef == results.hostSessionId
+                    }
+                    if (session == null) {
+                        Text(
+                            "Can't add these results",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            ShareCodec.ShareError.DIFFERENT_EVENT.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("OK") }
+                    } else {
+                        val raterCount = results.ratings.map { it.raterId }.distinct().size
+                        Text(
+                            "Merged results",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "$raterCount rater" + if (raterCount == 1) "" else "s" +
+                                " · ${results.ratings.size} score entries" +
+                                if (results.revealed) " · identities included" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                if (results.revealed) {
+                                    "Coffee identities will be revealed in your copy."
+                                } else {
+                                    "Your copy stays anonymous until the host includes a reveal."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.confirmImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Add to my session") }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Cancel") }
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))

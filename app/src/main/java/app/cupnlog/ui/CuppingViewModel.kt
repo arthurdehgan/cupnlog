@@ -11,6 +11,7 @@ import app.cupnlog.data.CuppingDraft
 import app.cupnlog.data.CuppingPlan
 import app.cupnlog.data.CuppingTimeline
 import app.cupnlog.data.RatingField
+import app.cupnlog.data.RatingMerge
 import app.cupnlog.data.SavedSession
 import app.cupnlog.data.SessionOrigin
 import app.cupnlog.data.SessionStatus
@@ -68,11 +69,28 @@ sealed interface Screen {
     data class ShareSetup(val sessionId: String, val returnTo: Screen) : Screen
 
     /**
+     * Phase 4 host: collect each taster's ratings over the wireless exchange
+     * (Nearby), with the QR scanner / paste as the always-available fallback.
+     * `returnTo` keeps `handleBack()` sensible — opened from a done session's
+     * detail screen.
+     */
+    data class CollectRatings(val sessionId: String, val returnTo: Screen) : Screen
+
+    /**
+     * Phase 4 guest: send this device's own ratings to the host over the
+     * wireless exchange, then receive the merged results. `returnTo` keeps
+     * `handleBack()` sensible — opened from a joined done session's detail.
+     */
+    data class SendRatings(val sessionId: String, val returnTo: Screen) : Screen
+
+    /**
      * Phase 3 join: in-app QR scanner with the paste-code fallback below it.
      * Decoded payloads go through [CuppingViewModel.handleIncoming] and the
-     * confirm preview — the scanner itself never saves anything.
+     * confirm preview — the scanner itself never saves anything. `returnTo`
+     * (null → Home) keeps `handleBack()` sensible when the scanner is opened
+     * as the phase-4 QR fallback from the collect screen.
      */
-    data object Scanner : Screen
+    data class Scanner(val returnTo: Screen? = null) : Screen
 
     /**
      * Phase 3 confirm preview: shows exactly what an incoming link / scan /
@@ -247,6 +265,13 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         initialValue = "",
     )
 
+    /** Whether this device shares its tasting notes with the group (default on). */
+    val shareNotes: StateFlow<Boolean> = repository.shareNotes.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = true,
+    )
+
     fun setSoundOn(enabled: Boolean) {
         viewModelScope.launch { repository.setSoundOn(enabled) }
     }
@@ -258,6 +283,16 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /** This device's participant display name (stamped into shared payloads). */
     fun setMyName(name: String) {
         viewModelScope.launch { repository.setMyName(name) }
+    }
+
+    /** Whether this device's tasting notes travel with its shared ratings. */
+    fun setShareNotes(enabled: Boolean) {
+        viewModelScope.launch { repository.setShareNotes(enabled) }
+    }
+
+    /** Generates this device's stable rater id on first use (idempotent). */
+    fun ensureMyId() {
+        viewModelScope.launch { repository.getOrCreateMyId() }
     }
 
     init {
@@ -495,8 +530,18 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** "Join a cupping" on Home: in-app scanner, paste-code fallback below it. */
-    fun openScanner() {
-        _screen.value = Screen.Scanner
+    fun openScanner(returnTo: Screen? = null) {
+        _screen.value = Screen.Scanner(returnTo)
+    }
+
+    /** Host: collect tasters' ratings wirelessly (session detail entry point). */
+    fun openCollectRatings(sessionId: String, returnTo: Screen = Screen.History) {
+        _screen.value = Screen.CollectRatings(sessionId, returnTo)
+    }
+
+    /** Guest: send this device's ratings to the host wirelessly (session detail). */
+    fun openSendRatings(sessionId: String, returnTo: Screen = Screen.History) {
+        _screen.value = Screen.SendRatings(sessionId, returnTo)
     }
 
     /**
@@ -578,8 +623,16 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
                 _screen.value = current.returnTo
                 true
             }
-            Screen.Scanner -> {
-                _screen.value = Screen.Home
+            is Screen.CollectRatings -> {
+                _screen.value = current.returnTo
+                true
+            }
+            is Screen.SendRatings -> {
+                _screen.value = current.returnTo
+                true
+            }
+            is Screen.Scanner -> {
+                _screen.value = current.returnTo ?: Screen.Home
                 true
             }
             is Screen.ImportPreview -> {
@@ -772,6 +825,10 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /** What an incoming link / scan / paste carried, decoded. */
     sealed interface IncomingShare {
         data class Setup(val setup: ShareCodec.SharedSetup) : IncomingShare
+        /** One rater's own ratings, for the host to merge (kind "ratings"). */
+        data class Ratings(val ratings: ShareCodec.SharedRatings) : IncomingShare
+        /** Merged results for a guest to absorb (kind "group_results"). */
+        data class GroupResults(val results: ShareCodec.SharedGroupResults) : IncomingShare
         data class Error(val error: ShareCodec.ShareError) : IncomingShare
     }
 
@@ -811,7 +868,9 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      */
     fun handleIncoming(text: String): Boolean {
         val share: IncomingShare = when (val result = ShareCodec.decode(text)) {
-            is ShareCodec.DecodeResult.Success -> IncomingShare.Setup(result.setup)
+            is ShareCodec.DecodeResult.Setup -> IncomingShare.Setup(result.setup)
+            is ShareCodec.DecodeResult.Ratings -> IncomingShare.Ratings(result.ratings)
+            is ShareCodec.DecodeResult.GroupResults -> IncomingShare.GroupResults(result.results)
             is ShareCodec.DecodeResult.Failure -> {
                 if (result.error == ShareCodec.ShareError.NOT_A_COFCUP_CODE) {
                     _scanHint.value = result.error.message
@@ -825,7 +884,16 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
             _queuedIncoming.value = share
             _showQueuedDialog.value = true
         } else {
-            showIncoming(share, returnTo = _screen.value.takeIf { it !is Screen.ImportPreview })
+            // A scanner opened from the collect screen keeps that screen as the
+            // preview's returnTo, so confirming a scanned payload lands back on
+            // the collect flow instead of the scanner.
+            val from = _screen.value
+            val returnTo = when (from) {
+                is Screen.Scanner -> from.returnTo
+                is Screen.ImportPreview -> null
+                else -> from
+            }
+            showIncoming(share, returnTo = returnTo)
         }
         return true
     }
@@ -869,38 +937,113 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * PLANNED copy (idempotent, keyed on `sessionRef` + `status=planned`).
      */
     fun confirmImport() {
-        val setup = (_incoming.value as? IncomingShare.Setup)?.setup ?: return
+        val incoming = _incoming.value ?: return
         viewModelScope.launch {
-            val plan = CuppingPlan(
-                cupSizeMl = setup.cupSizeMl,
-                cupCount = setup.cupCount,
-                coffees = setup.coffees.take(setup.cupCount),
-                sessionName = setup.sessionName,
-                blind = setup.blind,
-            )
-            val existing = repository.sessions.first().firstOrNull {
-                it.origin == SessionOrigin.JOINED &&
-                    it.sessionRef == setup.hostSessionId &&
-                    it.status == SessionStatus.PLANNED
+            when (incoming) {
+                is IncomingShare.Setup -> {
+                    saveSetupRow(incoming.setup)
+                    _incoming.value = null
+                    _screen.value = Screen.Home
+                }
+
+                is IncomingShare.Ratings -> {
+                    mergeIncomingRatings(incoming.ratings)
+                    _incoming.value = null
+                    _screen.value = (_screen.value as? Screen.ImportPreview)?.returnTo ?: Screen.Home
+                }
+
+                is IncomingShare.GroupResults -> {
+                    mergeGroupResults(incoming.results)
+                    _incoming.value = null
+                    _screen.value = (_screen.value as? Screen.ImportPreview)?.returnTo ?: Screen.Home
+                }
+
+                is IncomingShare.Error -> {
+                    _incoming.value = null
+                    _screen.value = (_screen.value as? Screen.ImportPreview)?.returnTo ?: Screen.Home
+                }
             }
-            val row = (existing ?: SavedSession(
-                id = UUID.randomUUID().toString(),
-                createdAtMs = System.currentTimeMillis(),
-                plan = plan,
-                status = SessionStatus.PLANNED,
-                blind = setup.blind,
-                origin = SessionOrigin.JOINED,
-                hostName = setup.hostName,
-                sessionRef = setup.hostSessionId,
-            )).copy(plan = plan, blind = setup.blind)
-            repository.save(row)
-            _incoming.value = null
-            // A confirmed import always lands on Home: the joined setup lives
-            // there as a chip, ready to run — regardless of where the import
-            // came from (scanner, paste, deep link).
-            _screen.value = Screen.Home
         }
     }
+
+    /** Persists an accepted setup import as a planned / joined row. */
+    private suspend fun saveSetupRow(setup: ShareCodec.SharedSetup) {
+        val plan = CuppingPlan(
+            cupSizeMl = setup.cupSizeMl,
+            cupCount = setup.cupCount,
+            coffees = setup.coffees.take(setup.cupCount),
+            sessionName = setup.sessionName,
+            blind = setup.blind,
+        )
+        val existing = repository.sessions.first().firstOrNull {
+            it.origin == SessionOrigin.JOINED &&
+                it.sessionRef == setup.hostSessionId &&
+                it.status == SessionStatus.PLANNED
+        }
+        val row = (existing ?: SavedSession(
+            id = UUID.randomUUID().toString(),
+            createdAtMs = System.currentTimeMillis(),
+            plan = plan,
+            status = SessionStatus.PLANNED,
+            blind = setup.blind,
+            origin = SessionOrigin.JOINED,
+            hostName = setup.hostName,
+            sessionRef = setup.hostSessionId,
+        )).copy(plan = plan, blind = setup.blind)
+        repository.save(row)
+    }
+
+    /**
+     * Merges one rater's incoming ratings into the matching session
+     * (replace-per-`raterId`, idempotent) — see [RatingMerge]. No-op when no
+     * such session exists (different cupping).
+     */
+    private suspend fun mergeIncomingRatings(ratings: ShareCodec.SharedRatings) {
+        val updated = RatingMerge.mergeIncomingRatings(repository.sessions.first(), ratings)
+            ?: return
+        repository.save(updated)
+    }
+
+    /**
+     * Absorbs merged results into the local (joined) copy: everyone's entries
+     * except this device's own (own ratings + notes stay local, decision 8).
+     * A blind reveal backfills the position-ordered identities and stamps
+     * `revealedAtMs` exactly once — see [RatingMerge].
+     */
+    private suspend fun mergeGroupResults(results: ShareCodec.SharedGroupResults) {
+        val myId = repository.getOrCreateMyId()
+        val updated = RatingMerge.mergeGroupResults(
+            sessions = repository.sessions.first(),
+            results = results,
+            myId = myId,
+            nowMs = System.currentTimeMillis(),
+        ) ?: return
+        repository.save(updated)
+    }
+
+    /**
+     * Merges a ratings payload decoded from a wireless exchange (the screens
+     * hold the raw bytes; this is the confirmed apply step). Returns true when
+     * a matching session was found and merged.
+     */
+    fun confirmRatings(ratings: ShareCodec.SharedRatings, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            mergeIncomingRatings(ratings)
+            onDone()
+        }
+    }
+
+    /** Absorbs a group_results payload decoded from a wireless exchange. */
+    fun confirmGroupResults(results: ShareCodec.SharedGroupResults, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            mergeGroupResults(results)
+            onDone()
+        }
+    }
+
+    /** Whether a decoded payload targets a session on this device (any role). */
+    fun hasSessionForRef(ref: String): Boolean =
+        history.value.any { it.id == ref || it.sessionRef == ref }
 
     /** Cancel / back on the import preview: nothing was saved. */
     fun dismissImport() {

@@ -29,7 +29,9 @@ fun CuppingApp() {
         is Screen.SessionDetail -> SessionDetailScreen(vm, s.sessionId)
         is Screen.IdentifyCups -> IdentifyCupsScreen(vm, s.sessionId)
         is Screen.ShareSetup -> ShareSetupScreen(vm, s.sessionId)
-        Screen.Scanner -> ScannerScreen(vm)
+        is Screen.CollectRatings -> CollectRatingsScreen(vm, s.sessionId, s.returnTo)
+        is Screen.SendRatings -> SendRatingsScreen(vm, s.sessionId, s.returnTo)
+        is Screen.Scanner -> ScannerScreen(vm)
         is Screen.ImportPreview -> ImportPreviewScreen(vm)
     }
     // Session shell: owns keep-screen-on, chime playback and the Done save for

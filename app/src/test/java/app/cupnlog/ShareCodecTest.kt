@@ -3,7 +3,9 @@ package app.cupnlog
 import app.cupnlog.data.CoffeeEntry
 import app.cupnlog.data.CupColors
 import app.cupnlog.data.CuppingPlan
+import app.cupnlog.data.CupRating
 import app.cupnlog.data.SavedSession
+import app.cupnlog.data.SessionOrigin
 import app.cupnlog.data.SessionStatus
 import app.cupnlog.data.ShareCodec
 import app.cupnlog.data.ShareCodec.DecodeResult
@@ -11,6 +13,7 @@ import app.cupnlog.data.ShareCodec.ShareError
 import app.cupnlog.data.ShareCodec.SharedSetup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -65,7 +68,7 @@ class ShareCodecTest {
         (ShareCodec.decode(input) as DecodeResult.Failure).error
 
     private fun decodeSetup(input: String): SharedSetup =
-        (ShareCodec.decode(input) as DecodeResult.Success).setup
+        (ShareCodec.decode(input) as DecodeResult.Setup).setup
 
     private fun encoded(session: SavedSession, hostName: String = "Arthur") =
         ShareCodec.encodeSetup(session, hostName)
@@ -178,14 +181,11 @@ class ShareCodecTest {
 
     @Test
     fun unknownKind_rejected() {
-        // "ratings" and "group_results" arrive in phase 4; they must not decode now.
+        // A kind CofCup doesn't know is refused; "ratings" / "group_results"
+        // are valid phase-4 kinds and are covered by their own tests.
         assertEquals(
             ShareError.UNKNOWN_KIND,
-            decodeError(payload("""{"v":1,"kind":"ratings","sid":"x","ml":150,"cups":2}""")),
-        )
-        assertEquals(
-            ShareError.UNKNOWN_KIND,
-            decodeError(payload("""{"v":1,"kind":"group_results","sid":"x","ml":150,"cups":2}""")),
+            decodeError(payload("""{"v":1,"kind":"nonsense","sid":"x","ml":150,"cups":2}""")),
         )
     }
 
@@ -324,5 +324,167 @@ class ShareCodecTest {
         )
         assertEquals(40, decoded.sessionName.length)
         assertEquals(40, decoded.hostName.length)
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 4: ratings + group_results
+    // ------------------------------------------------------------------
+
+    private val hostId = "11111111-2222-3333-4444-555555555555"
+
+    private fun ratedSession(
+        blind: Boolean = false,
+        revealed: Boolean = false,
+        ratings: List<CupRating>,
+    ) = SavedSession(
+        id = hostId,
+        createdAtMs = 1_700_000_000_000,
+        plan = CuppingPlan(
+            cupSizeMl = 150,
+            cupCount = 3,
+            coffees = coffees,
+            sessionName = "Sunday cupping",
+            blind = blind,
+        ),
+        status = SessionStatus.DONE,
+        blind = blind,
+        revealedAtMs = if (revealed) 1_700_000_100_000 else null,
+        ratings = ratings,
+    )
+
+    private fun sampleRatings(raterId: String, rater: String): List<CupRating> = listOf(
+        CupRating(
+            cup = 0, raterId = raterId, rater = rater,
+            aroma = 8, flavor = 8, acidity = 7, sweetness = 8, mouthfeel = 7,
+            aftertaste = 8, overall = 8, notes = "florals, tea-like",
+        ),
+        CupRating(cup = 1, raterId = raterId, rater = rater, overall = 7),
+        CupRating(cup = 2, raterId = raterId, rater = rater),
+    )
+
+    private fun decodeRatings(input: String): ShareCodec.SharedRatings =
+        (ShareCodec.decode(input) as DecodeResult.Ratings).ratings
+
+    private fun decodeGroup(input: String): ShareCodec.SharedGroupResults =
+        (ShareCodec.decode(input) as DecodeResult.GroupResults).results
+
+    @Test
+    fun ratings_roundTrips() {
+        val encode = ShareCodec.encodeRatings(
+            ratedSession(ratings = sampleRatings("rater-1", "Arthur")),
+            raterId = "rater-1",
+            raterName = "Arthur",
+            notesShared = true,
+        )
+        val decoded = decodeRatings(encode.url)
+        assertEquals(hostId, decoded.hostSessionId)
+        assertEquals("rater-1", decoded.raterId)
+        assertEquals("Arthur", decoded.raterName)
+        assertTrue(decoded.notesShared)
+        assertEquals(3, decoded.ratings.size)
+        assertEquals(0, decoded.ratings[0].cup)
+        assertEquals(8, decoded.ratings[0].overall)
+        assertEquals("florals, tea-like", decoded.ratings[0].notes)
+        assertEquals(7, decoded.ratings[1].overall)
+    }
+
+    @Test
+    fun ratings_threeEntryForms_decodeIdentically() {
+        val encode = ShareCodec.encodeRatings(
+            ratedSession(ratings = sampleRatings("rater-1", "Arthur")),
+            raterId = "rater-1",
+            raterName = "Arthur",
+            notesShared = true,
+        )
+        val expected = decodeRatings(encode.url)
+        assertEquals(expected, decodeRatings("cofcup://import?v=1&d=${encode.code}"))
+        assertEquals(expected, decodeRatings(encode.code))
+    }
+
+    @Test
+    fun ratings_notesSharedFalse_dropsNotes() {
+        val encode = ShareCodec.encodeRatings(
+            ratedSession(ratings = sampleRatings("rater-1", "Arthur")),
+            raterId = "rater-1",
+            raterName = "Arthur",
+            notesShared = false,
+        )
+        val decoded = decodeRatings(encode.url)
+        assertFalse(decoded.notesShared)
+        assertTrue(decoded.ratings.all { it.notes.isEmpty() })
+    }
+
+    @Test
+    fun ratings_joinedUsesSessionRefAsSid() {
+        val joined = ratedSession(ratings = sampleRatings("rater-1", "Arthur")).copy(
+            origin = SessionOrigin.JOINED,
+            sessionRef = hostId,
+        )
+        val decoded = decodeRatings(
+            ShareCodec.encodeRatings(joined, "rater-1", "Arthur", notesShared = true).url,
+        )
+        assertEquals(hostId, decoded.hostSessionId)
+    }
+
+    @Test
+    fun ratings_outOfRangeCupSkipped() {
+        val json = """{"v":1,"kind":"ratings","sid":"$hostId","rater":{"id":"r1","name":"A"},""" +
+            """"notesShared":true,"rs":[{"c":0,"o":8},{"c":99,"o":3}]}"""
+        val decoded = decodeRatings(payload(json))
+        assertEquals(1, decoded.ratings.size)
+        assertEquals(0, decoded.ratings[0].cup)
+    }
+
+    @Test
+    fun ratings_outOfRangeScoreDropped() {
+        val json = """{"v":1,"kind":"ratings","sid":"$hostId","rater":{"id":"r1","name":"A"},""" +
+            """"notesShared":true,"rs":[{"c":0,"o":11,"ar":0}]}"""
+        val decoded = decodeRatings(payload(json))
+        assertNull(decoded.ratings[0].overall)
+        assertNull(decoded.ratings[0].aroma)
+    }
+
+    @Test
+    fun ratings_ignoresInjectedIdentities() {
+        // Identities may only arrive via group_results; a stray co[] in a
+        // ratings payload is ignored, not applied.
+        val json = """{"v":1,"kind":"ratings","sid":"$hostId","rater":{"id":"r1","name":"A"},""" +
+            """"notesShared":true,"co":[{"n":"Secret","c":1}],"rs":[{"c":0,"o":8}]}"""
+        val decoded = decodeRatings(payload(json))
+        assertEquals(1, decoded.ratings.size)
+        assertEquals(8, decoded.ratings[0].overall)
+    }
+
+    @Test
+    fun groupResults_roundTrips() {
+        val ratings = sampleRatings("rater-1", "Arthur") + sampleRatings("rater-2", "Sam")
+        val decoded = decodeGroup(ShareCodec.encodeGroupResults(ratedSession(ratings = ratings)).url)
+        assertEquals(hostId, decoded.hostSessionId)
+        assertFalse(decoded.revealed)
+        assertNull(decoded.revealCoffees)
+        assertEquals(6, decoded.ratings.size)
+        assertEquals(setOf("rater-1", "rater-2"), decoded.ratings.map { it.raterId }.toSet())
+    }
+
+    @Test
+    fun groupResults_revealCarriesCoffees() {
+        val session = ratedSession(
+            blind = true,
+            revealed = true,
+            ratings = sampleRatings("rater-1", "Arthur"),
+        )
+        val decoded = decodeGroup(ShareCodec.encodeGroupResults(session).url)
+        assertTrue(decoded.revealed)
+        assertEquals(3, decoded.revealCoffees?.size)
+        assertEquals("Ethiopia", decoded.revealCoffees?.get(0)?.name)
+    }
+
+    @Test
+    fun groupResults_scoresOnly_omitsNotes() {
+        val session = ratedSession(ratings = sampleRatings("rater-1", "Arthur"))
+        val full = ShareCodec.encodeGroupResults(session, includeNotes = true)
+        val lean = ShareCodec.encodeGroupResults(session, includeNotes = false)
+        assertTrue(decodeGroup(lean.url).ratings.all { it.notes.isEmpty() })
+        assertTrue(lean.code.length <= full.code.length)
     }
 }

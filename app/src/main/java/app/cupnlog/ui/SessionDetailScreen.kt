@@ -36,10 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.cupnlog.data.CoffeeEntry
 import app.cupnlog.data.SessionOrigin
 import app.cupnlog.data.SessionStatus
 import app.cupnlog.ui.components.BlindCoffeeListCard
 import app.cupnlog.ui.components.CoffeeListCard
+import app.cupnlog.ui.components.ComparisonCard
 import app.cupnlog.ui.components.ConfirmDialog
 import app.cupnlog.ui.components.formatDateTime
 
@@ -70,6 +72,14 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
     val myRatingsByCup = session.ratings
         .filter { it.raterId == myId }
         .associateBy { it.cup }
+
+    // All raters' entries grouped by cup, and a stable rater order for the
+    // comparison view (by display name, then id).
+    val ratingsByCup = session.ratings.groupBy { it.cup }
+    val raterOrder = session.ratings
+        .map { it.raterId to it.rater }
+        .distinct()
+        .sortedWith(compareBy({ it.second.ifBlank { it.first } }, { it.first }))
 
     Scaffold(
         topBar = {
@@ -127,6 +137,33 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
             } else if (session.blind && session.revealedAtMs == null) {
                 // Blind, not yet identified: positions only — never name/colour/label.
                 BlindCoffeeListCard(cupCount = session.plan.cupCount)
+                if (session.ratings.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Ask the host for the reveal. Until then cups stay at their " +
+                            "positions — the scores are still comparable.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ComparisonCard(
+                        coffees = session.plan.coffees,
+                        ratingsByCup = ratingsByCup,
+                        raterOrder = raterOrder,
+                        myId = myId,
+                        cupLabel = { "Cup ${it + 1}" },
+                        cupColor = { CoffeeEntry.FALLBACK_COLOR },
+                    )
+                }
+            } else if (session.ratings.isNotEmpty()) {
+                // Rater-aware comparison: average + one overall box per rater,
+                // then this device's own attributes and notes per cup.
+                ComparisonCard(
+                    coffees = session.plan.coffees,
+                    ratingsByCup = ratingsByCup,
+                    raterOrder = raterOrder,
+                    myId = myId,
+                )
             } else {
                 CoffeeListCard(
                     coffees = session.plan.coffees,
@@ -182,6 +219,30 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
                             Text("Reveal identities", fontWeight = FontWeight.Bold)
                         }
                     }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            if (!planned && session.plan.coffees.isNotEmpty()) {
+                // Phase 4: wireless ratings exchange. Host collects from
+                // tasters; a guest sends its own ratings and gets the merged
+                // results back. QR fallback lives on those screens.
+                Button(
+                    onClick = {
+                        if (session.origin == SessionOrigin.JOINED) {
+                            vm.openSendRatings(session.id, Screen.SessionDetail(session.id))
+                        } else {
+                            vm.openCollectRatings(session.id, Screen.SessionDetail(session.id))
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                ) {
+                    Text(
+                        if (session.origin == SessionOrigin.JOINED) "Send my ratings"
+                        else "Collect ratings",
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
