@@ -1037,6 +1037,32 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Nearby confirmation is bound to the selected host session and shared event id. */
+    fun confirmNearbyRatings(
+        selectedSessionId: String,
+        ratings: ShareCodec.SharedRatings,
+        onDone: () -> Unit = {},
+        onRejected: () -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            if (!isCurrentCollectRatingsSession(selectedSessionId)) {
+                onRejected()
+                return@launch
+            }
+            val updated = RatingMerge.mergeIncomingRatingsForSession(
+                sessions = repository.sessions.first(),
+                selectedSessionId = selectedSessionId,
+                ratings = ratings,
+            )
+            if (updated == null || !isCurrentCollectRatingsSession(selectedSessionId)) {
+                onRejected()
+                return@launch
+            }
+            repository.save(updated)
+            onDone()
+        }
+    }
+
     /** Absorbs a group_results payload decoded from a wireless exchange. */
     fun confirmGroupResults(results: ShareCodec.SharedGroupResults, onDone: () -> Unit = {}) {
         viewModelScope.launch {
@@ -1045,9 +1071,46 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Whether a decoded payload targets a session on this device (any role). */
-    fun hasSessionForRef(ref: String): Boolean =
-        history.value.any { it.id == ref || it.sessionRef == ref }
+    /** Nearby confirmation is bound to the selected guest copy and shared event id. */
+    fun confirmNearbyGroupResults(
+        selectedSessionId: String,
+        results: ShareCodec.SharedGroupResults,
+        onDone: () -> Unit = {},
+        onRejected: () -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            if (!isCurrentSendRatingsSession(selectedSessionId)) {
+                onRejected()
+                return@launch
+            }
+            val sessions = repository.sessions.first()
+            val selected = sessions.firstOrNull { it.id == selectedSessionId }
+            if (selected?.sharedSessionId != results.hostSessionId) {
+                onRejected()
+                return@launch
+            }
+            val myId = repository.getOrCreateMyId()
+            val updated = RatingMerge.mergeGroupResultsForSession(
+                sessions = sessions,
+                selectedSessionId = selectedSessionId,
+                results = results,
+                myId = myId,
+                nowMs = System.currentTimeMillis(),
+            )
+            if (updated == null || !isCurrentSendRatingsSession(selectedSessionId)) {
+                onRejected()
+                return@launch
+            }
+            repository.save(updated)
+            onDone()
+        }
+    }
+
+    private fun isCurrentCollectRatingsSession(sessionId: String): Boolean =
+        (_screen.value as? Screen.CollectRatings)?.sessionId == sessionId
+
+    private fun isCurrentSendRatingsSession(sessionId: String): Boolean =
+        (_screen.value as? Screen.SendRatings)?.sessionId == sessionId
 
     /** Cancel / back on the import preview: nothing was saved. */
     fun dismissImport() {

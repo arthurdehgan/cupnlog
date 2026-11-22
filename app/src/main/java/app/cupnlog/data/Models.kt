@@ -176,7 +176,11 @@ data class SavedSession(
     val sessionRef: String = "",
     /** All participants' ratings keyed by raterId (see [CupRating.raterId]). */
     val ratings: List<CupRating> = emptyList(),
-)
+) {
+    /** Stable event id carried by shares: own row id, or the host id on a joined copy. */
+    val sharedSessionId: String
+        get() = sessionRef.ifBlank { id }
+}
 
 /**
  * Planned→done conversion (user decision 3): when a run started from a planned

@@ -91,9 +91,14 @@ fun CollectRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Scre
                 when (val decoded = ShareCodec.decode(String(bytes, Charsets.UTF_8))) {
                     is ShareCodec.DecodeResult.Ratings -> {
                         val incoming = decoded.ratings
-                        // Reject another event's payload outright rather than
-                        // queueing a card that can never be merged.
-                        if (!vm.hasSessionForRef(incoming.hostSessionId)) {
+                        val activeSessionId =
+                            (vm.screen.value as? Screen.CollectRatings)?.sessionId
+                        val selected = vm.history.value.firstOrNull { it.id == sessionId }
+                        // A nearby host accepts only ratings for the session
+                        // this screen is currently collecting.
+                        if (activeSessionId != sessionId ||
+                            selected?.sharedSessionId != incoming.hostSessionId
+                        ) {
                             state.status.value = ShareCodec.ShareError.DIFFERENT_EVENT.message
                             return
                         }
@@ -199,11 +204,18 @@ fun CollectRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Scre
                     PendingRatingsCard(
                         ratings = ratings,
                         onAdd = {
-                            vm.confirmRatings(ratings) {
-                                state.pending.update { list ->
-                                    list.filterNot { it.raterId == ratings.raterId }
+                            vm.confirmNearbyRatings(
+                                selectedSessionId = sessionId,
+                                ratings = ratings,
+                                onDone = {
+                                    state.pending.update { list ->
+                                        list.filterNot { it.raterId == ratings.raterId }
+                                    }
+                                },
+                                onRejected = {
+                                    state.status.value = ShareCodec.ShareError.DIFFERENT_EVENT.message
                                 }
-                            }
+                            )
                         },
                         onSkip = {
                             state.pending.update { list ->

@@ -87,6 +87,21 @@ object RatingMerge {
         )
     }
 
+    /**
+     * Nearby-only merge scoped to the selected local row. The payload must
+     * carry that row's shared event id, so another matching row elsewhere in
+     * history can never receive it.
+     */
+    fun mergeIncomingRatingsForSession(
+        sessions: List<SavedSession>,
+        selectedSessionId: String,
+        ratings: ShareCodec.SharedRatings,
+    ): SavedSession? {
+        val selected = sessions.firstOrNull { it.id == selectedSessionId } ?: return null
+        if (ratings.hostSessionId != selected.sharedSessionId) return null
+        return mergeIncomingRatings(listOf(selected), ratings)
+    }
+
     /** Absorbs merged results into the matching session; null when none matches. */
     fun mergeGroupResults(
         sessions: List<SavedSession>,
@@ -102,5 +117,18 @@ object RatingMerge {
             cupCount = session.plan.cupCount,
         )
         return applyReveal(session.copy(ratings = merged), results.revealCoffees, results.revealed, nowMs)
+    }
+
+    /** Nearby-only result merge scoped to the guest's selected local row. */
+    fun mergeGroupResultsForSession(
+        sessions: List<SavedSession>,
+        selectedSessionId: String,
+        results: ShareCodec.SharedGroupResults,
+        myId: String,
+        nowMs: Long,
+    ): SavedSession? {
+        val selected = sessions.firstOrNull { it.id == selectedSessionId } ?: return null
+        if (results.hostSessionId != selected.sharedSessionId) return null
+        return mergeGroupResults(listOf(selected), results, myId, nowMs)
     }
 }

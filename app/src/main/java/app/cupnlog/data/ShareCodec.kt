@@ -191,7 +191,7 @@ object ShareCodec {
         val json = JSONObject()
             .put("v", VERSION)
             .put("kind", kind)
-            .put("sid", session.id.take(SID_MAX))
+            .put("sid", session.sharedSessionId.take(SID_MAX))
         if (hostName.isNotBlank()) json.put("host", hostName.take(HOST_MAX))
         if (session.plan.sessionName.isNotBlank()) {
             json.put("name", session.plan.sessionName.take(NAME_MAX))
@@ -210,9 +210,8 @@ object ShareCodec {
 
     /**
      * Encodes this device's own ratings for [raterId] as a "ratings" payload
-     * for the host to merge. The `sid` is the host session id, for a joined
-     * copy that is [SavedSession.sessionRef], not the local row id, so the
-     * host can match it to its own session.
+     * for the host to merge. The `sid` is the shared event id, which is the
+     * host session id for a joined copy rather than its local row id.
      */
     fun encodeRatings(
         session: SavedSession,
@@ -223,7 +222,7 @@ object ShareCodec {
         val json = JSONObject()
             .put("v", VERSION)
             .put("kind", KIND_RATINGS)
-            .put("sid", session.sessionRef.ifBlank { session.id }.take(SID_MAX))
+            .put("sid", session.sharedSessionId.take(SID_MAX))
         json.put(
             "rater",
             JSONObject()
@@ -251,7 +250,7 @@ object ShareCodec {
         val json = JSONObject()
             .put("v", VERSION)
             .put("kind", KIND_GROUP_RESULTS)
-            .put("sid", session.id.take(SID_MAX))
+            .put("sid", session.sharedSessionId.take(SID_MAX))
         val byRater = session.ratings.groupBy { it.raterId }
         val raters = JSONArray()
         byRater.forEach { (raterId, entries) ->

@@ -66,6 +66,7 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
         object : NearbyExchange.Listener {
             override fun onEndpointConnected(endpointId: String, name: String) {
                 // Send this device's ratings as soon as the host is connected.
+                if ((vm.screen.value as? Screen.SendRatings)?.sessionId != sessionId) return
                 val current = vm.history.value.firstOrNull { it.id == sessionId }
                 if (current == null) {
                     state.status.value = "This session no longer exists."
@@ -92,6 +93,15 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
             override fun onPayload(endpointId: String, bytes: ByteArray) {
                 when (val decoded = ShareCodec.decode(String(bytes, Charsets.UTF_8))) {
                     is ShareCodec.DecodeResult.GroupResults -> {
+                        val activeSessionId =
+                            (vm.screen.value as? Screen.SendRatings)?.sessionId
+                        val selected = vm.history.value.firstOrNull { it.id == sessionId }
+                        if (activeSessionId != sessionId ||
+                            selected?.sharedSessionId != decoded.results.hostSessionId
+                        ) {
+                            state.status.value = ShareCodec.ShareError.DIFFERENT_EVENT.message
+                            return
+                        }
                         state.received.value = decoded.results
                         state.status.value = "Results received."
                     }
@@ -204,7 +214,17 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
-                            onClick = { vm.confirmGroupResults(results) { vm.handleBack() } },
+                            onClick = {
+                                vm.confirmNearbyGroupResults(
+                                    selectedSessionId = sessionId,
+                                    results = results,
+                                    onDone = { vm.handleBack() },
+                                    onRejected = {
+                                        state.status.value =
+                                            ShareCodec.ShareError.DIFFERENT_EVENT.message
+                                    },
+                                )
+                            },
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Add results to my session") }
                         Spacer(modifier = Modifier.height(4.dp))
