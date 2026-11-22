@@ -499,10 +499,9 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   dry-aroma ratings are entered outside the timer screen. Decide whether dry
   aroma uses the existing Aroma score or needs its own rating; keep the timer's
   `0:00` tied to water first hitting the grounds.
-- **Next-step timer note:** Change the timer screen's bottom instruction note
-  to explain the upcoming step rather than repeat the current step's
-  instruction. Decide what the note shows at the final step and after a step is
-  skipped.
+- **Next-step timer note (implemented 2026-11-22):** The note names and explains
+  the next step. Skipping advances the note with the timeline's new current
+  step; when no next step remains, it shows that cupping is complete and saved.
 
 ## 10. Remaining phase-4 work
 

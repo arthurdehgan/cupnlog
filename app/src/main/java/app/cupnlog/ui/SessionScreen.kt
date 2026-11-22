@@ -404,18 +404,19 @@ private fun RunningContent(plan: CuppingPlan, elapsedSec: Long, current: Cupping
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "What to do now",
+                next?.let { "Up next · ${it.title}" } ?: "Cupping complete",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // Blind sessions must not leak identities through the Done step's
-            // instruction (the colour/number wording); swap in the neutral
-            // variant without moving any step window out of CuppingTimeline.
-            val instruction = if (plan.blind && current.isLast) {
+            // This note describes the next step. Keep the same blind-safe Done
+            // copy used by the current-step view, without changing timeline data.
+            val instruction = if (next == null) {
+                "The session has been saved."
+            } else if (plan.blind && next.isLast) {
                 blindDoneInstruction(plan.cupCount)
             } else {
-                current.instruction
+                next.instruction
             }
             Text(instruction, style = MaterialTheme.typography.bodyMedium)
         }
