@@ -46,6 +46,8 @@ accept the Nearby connection so the guest can receive the broadcast.
 **Blind identity audit follow-ups implemented (2026-11-22):** StartCheck renders
 blind cups by position only. Joined blind copies support local identification;
 later host results preserve the guest's local mapping.
+**Settings About implemented (2026-11-22):** Settings reads the installed
+package's version name and version code for its Version and Build number rows.
 **Validation remaining:** the real two-device pass (Nearby on two phones;
 QR fallback on the emulator) and the phase-3 scanner/https-entry device check.
 GitHub Pages must be enabled for verified App Links. `gradlew` has its
@@ -497,9 +499,6 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   dry-aroma ratings are entered outside the timer screen. Decide whether dry
   aroma uses the existing Aroma score or needs its own rating; keep the timer's
   `0:00` tied to water first hitting the grounds.
-- **Settings About section:** Show the app version and build number in
-  Settings so participants can compare builds during development. Confirm the
-  displayed values come from the app's version metadata.
 - **Next-step timer note:** Change the timer screen's bottom instruction note
   to explain the upcoming step rather than repeat the current step's
   instruction. Decide what the note shows at the final step and after a step is

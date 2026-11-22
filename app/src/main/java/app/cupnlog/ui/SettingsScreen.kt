@@ -1,5 +1,6 @@
 package app.cupnlog.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,14 +27,23 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.pm.PackageInfoCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(vm: CuppingViewModel) {
+    val context = LocalContext.current
+    val packageInfo = remember(context) {
+        context.packageManager.getPackageInfo(context.packageName, 0)
+    }
+    val versionName = packageInfo.versionName ?: "Unknown"
+    val buildNumber = PackageInfoCompat.getLongVersionCode(packageInfo).toString()
     val soundOn by vm.soundOn.collectAsState()
     val vibrateOn by vm.vibrateOn.collectAsState()
     val shareNotes by vm.shareNotes.collectAsState()
@@ -144,7 +154,38 @@ fun SettingsScreen(vm: CuppingViewModel) {
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                "About",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    AboutValueRow(label = "Version", value = versionName)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    AboutValueRow(label = "Build number", value = buildNumber)
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun AboutValueRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
