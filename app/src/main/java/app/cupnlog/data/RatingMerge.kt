@@ -63,9 +63,13 @@ object RatingMerge {
         revealed: Boolean,
         nowMs: Long,
     ): SavedSession {
-        if (!revealed || revealCoffees.isNullOrEmpty() || !session.blind) return session
+        if (!revealed || revealCoffees.isNullOrEmpty() || !session.blind ||
+            revealCoffees.size != session.plan.cupCount
+        ) {
+            return session
+        }
         return session.copy(
-            plan = session.plan.copy(coffees = revealCoffees.take(session.plan.cupCount)),
+            plan = session.plan.copy(coffees = revealCoffees),
             revealedAtMs = session.revealedAtMs ?: nowMs,
         )
     }
