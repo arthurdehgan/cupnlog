@@ -484,6 +484,24 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
 - Post-reveal re-hide / re-blind reuse — out of v1 (a duplicate setup is the
   workaround, recorded for later).
 
+### Ideas to shape (captured 2026-11-22)
+
+- **Pre-cupping preparation:** Add an optional preparation stage before the
+  timer. The session context exists before the timer starts, and the user can
+  complete or skip optional preparation such as shuffling cups for a blind
+  tasting and smelling/rating dry aromas, then explicitly start the timer.
+  Work out how preparation state is created, discarded, and resumed, and how
+  dry-aroma ratings are entered outside the timer screen. Decide whether dry
+  aroma uses the existing Aroma score or needs its own rating; keep the timer's
+  `0:00` tied to water first hitting the grounds.
+- **Settings About section:** Show the app version and build number in
+  Settings so participants can compare builds during development. Confirm the
+  displayed values come from the app's version metadata.
+- **Next-step timer note:** Change the timer screen's bottom instruction note
+  to explain the upcoming step rather than repeat the current step's
+  instruction. Decide what the note shows at the final step and after a step is
+  skipped.
+
 ## 10. Where to start, when the go is given
 
 The phase-4 feature implementation is in place. Before treating its blind
