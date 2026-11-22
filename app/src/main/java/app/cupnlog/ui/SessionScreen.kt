@@ -58,6 +58,7 @@ import app.cupnlog.data.CuppingPlan
 import app.cupnlog.data.CuppingStep
 import app.cupnlog.data.CuppingTimeline
 import app.cupnlog.data.SavedSession
+import app.cupnlog.data.SessionOrigin
 import app.cupnlog.data.SessionStatus
 import app.cupnlog.data.blindDoneInstruction
 import app.cupnlog.data.isRated
@@ -161,6 +162,9 @@ fun SessionScreen(vm: CuppingViewModel) {
                     // The Finished screen reads the reveal state from the saved
                     // history row (see onCuppingComplete's savedSessionId).
                     val savedRow = history.firstOrNull { it.id == session.savedSessionId }
+                    val origin = savedRow?.origin
+                        ?: history.firstOrNull { it.id == session.plannedSessionId }?.origin
+                        ?: SessionOrigin.OWN
                     // This device's ratings keyed by cup position, shown inline
                     // on the identification card; the VM-held ratings cover the
                     // brief window before the Done save has landed.
@@ -173,6 +177,7 @@ fun SessionScreen(vm: CuppingViewModel) {
                         plan = session.plan,
                         sessionId = session.savedSessionId ?: session.plannedSessionId,
                         blindRevealed = savedRow?.revealedAtMs != null,
+                        sessionOrigin = origin,
                         // After a confirmed identification the saved row's
                         // coffees are the ones reordered into cup positions;
                         // the live plan keeps the setup order.
@@ -527,6 +532,7 @@ private fun FinishedContent(
     plan: CuppingPlan,
     sessionId: String?,
     blindRevealed: Boolean,
+    sessionOrigin: SessionOrigin,
     revealedCoffees: List<CoffeeEntry>? = null,
     ratingsByCup: Map<Int, CupRating> = emptyMap(),
 ) {
@@ -553,8 +559,13 @@ private fun FinishedContent(
         when {
             plan.blind && !blindRevealed -> {
                 Text(
-                    "Coffee names stay hidden until you identify the cups. The session " +
-                        "was saved to your history.",
+                    if (sessionOrigin == SessionOrigin.JOINED) {
+                        "Coffee names stay hidden until the host shares the reveal. " +
+                            "The session was saved to your history."
+                    } else {
+                        "Coffee names stay hidden until you identify the cups. The session " +
+                            "was saved to your history."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -584,7 +595,9 @@ private fun FinishedContent(
     // the escape hatches outlined below it. Identical rhythm in every variant
     // (blind, revealed, empty session); only which action is primary changes.
     Spacer(modifier = Modifier.height(24.dp))
-    if (plan.blind && !blindRevealed && sessionId != null) {
+    if (plan.blind && !blindRevealed && sessionId != null &&
+        sessionOrigin == SessionOrigin.OWN
+    ) {
         Button(
             onClick = { vm.openIdentifyCups(sessionId, Screen.LiveSession) },
             modifier = Modifier.fillMaxWidth(),

@@ -43,10 +43,9 @@ and read the latest sound/vibration settings during a live session. The scanner
 preserves `returnTo`, both share screens expose the notes toggle, and both sides
 accept the Nearby connection so the guest can receive the broadcast.
 
-**Still open in the current code:** blind StartCheck still renders each
-coffee's color and label, and the finished screen still offers local
-identification for a joined blind session. Both conflict with the blind rules
-in §6; fix these before treating the blind identity audit as complete.
+**Blind identity audit follow-ups implemented (2026-11-22):** StartCheck now
+renders blind cups by position only; joined blind copies cannot enter local
+identification, and the ViewModel/domain reveal paths enforce host-only reveal.
 **Validation remaining:** the real two-device pass (Nearby on two phones;
 QR fallback on the emulator) and the phase-3 scanner/https-entry device check.
 GitHub Pages must be enabled for verified App Links. `gradlew` has its
@@ -502,15 +501,9 @@ exchange at session end. **Continuous/live sync is explicitly out of scope**
   instruction. Decide what the note shows at the final step and after a step is
   skipped.
 
-## 10. Where to start, when the go is given
+## 10. Remaining phase-4 work
 
-The phase-4 feature implementation is in place. Before treating its blind
-identity rules as complete or closing the phase:
-
-1. Hide coffee labels and colors on StartCheck when the plan is blind; render
-   position-only cups there.
-2. Remove the local identify/reveal action for joined blind sessions, and
-   enforce the host-only reveal rule in the ViewModel/domain path.
-3. Complete the manual device checks listed in §8: Nearby on two real phones,
-   the QR fallback on an emulator, and the phase-3 scanner/https-entry flow
-   after GitHub Pages is enabled.
+The blind identity code audit follow-ups are implemented. To close phase 4,
+complete the manual device checks listed in §8: Nearby on two real phones, the
+QR fallback on an emulator, and the phase-3 scanner/https-entry flow after
+GitHub Pages is enabled.

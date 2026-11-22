@@ -42,11 +42,12 @@ fun List<CoffeeEntry>.reorderedByMatch(cupToCoffee: List<Int>): List<CoffeeEntry
  * Confirms the identification on a saved blind session: coffees are reordered
  * into cup positions and identities are revealed (`revealedAtMs` is stamped
  * exactly once, so a later re-match only re-permutes the coffees). No-op on
- * rows where matching never applies: non-blind sessions (identities were never
- * hidden) and planned rows (no cupped ratings to align; they reveal directly).
+ * rows where matching never applies: joined rows (the host owns their reveal),
+ * non-blind sessions (identities were never hidden) and planned rows (no cupped
+ * ratings to align; an owned plan can reveal directly).
  */
 fun SavedSession.matchAndReveal(cupToCoffee: List<Int>, nowMs: Long): SavedSession {
-    if (!blind || status != SessionStatus.DONE || plan.cupCount == 0 ||
+    if (origin != SessionOrigin.OWN || !blind || status != SessionStatus.DONE || plan.cupCount == 0 ||
         plan.coffees.size != plan.cupCount
     ) {
         return this

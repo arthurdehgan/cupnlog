@@ -23,11 +23,10 @@ import java.util.zip.Inflater
  *
  * `kind` discriminates the payload:
  *  - "setup" / "blind_setup" (phase 3): a saved setup, host → guest. Both
- *    carry the full coffee identities (names, labels, colours): the joiner's
- *    blind copy must be able to run the same end-of-session identify-by-label
- *    as the host (user decision, 2026-11-13). The joiner's copy still behaves
- *    as blind, positions only on every pre-reveal surface, because the kind
- *    marks the row blind, not because data is withheld.
+ *    carry the full coffee identities (names, labels, colours) so the host can
+ *    later include them in a confirmed group_results reveal. The joiner's
+ *    copy stays blind and position-only until that reveal arrives; the kind
+ *    marks the row blind, not withheld data.
  *  - "ratings" (phase 4): one rater's own scores, guest → host, so the host
  *    can merge them. Carries attributes, the strictly manual Overall and,
  *    unless the rater opted out, notes. Identity fields other than the rater
@@ -198,8 +197,9 @@ object ShareCodec {
         }
         json.put("ml", session.plan.cupSizeMl)
         json.put("cups", session.plan.cupCount)
-        // Both kinds carry full identities: a blind joiner's copy must be able
-        // to identify by label at the end of the session (see header comment).
+        // Both kinds carry full identities so the host can later send an
+        // identity reveal in group_results. Joined copies remain anonymous
+        // until that confirmed reveal is received.
         val coffees = JSONArray()
         session.plan.coffees.take(session.plan.cupCount).forEach { coffee ->
             coffees.put(encodeCoffeeEntry(coffee))
@@ -403,9 +403,8 @@ object ShareCodec {
         if (cupCount !in MIN_CUPS..MAX_CUPS) throw ShareException(ShareError.INVALID_DATA)
 
         val blind = json.optString("kind") == KIND_BLIND_SETUP
-        // Both kinds decode identities the same way: the blind joiner's copy
-        // needs names/labels/colours to run the end-of-session identify (the
-        // row stays blind through `blind`, not through withheld data).
+        // Both kinds decode identities the same way. A blind joined row keeps
+        // them private until the host's confirmed group_results reveal.
         val coffees = decodeCoffees(json.optJSONArray("co"), cupCount)
 
         return SharedSetup(
