@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import app.cupnlog.R
@@ -59,11 +60,13 @@ fun SessionShell(vm: CuppingViewModel) {
     }
     val soundOn by vm.soundOn.collectAsState()
     val vibrateOn by vm.vibrateOn.collectAsState()
+    val currentSoundOn = rememberUpdatedState(soundOn)
+    val currentVibrateOn = rememberUpdatedState(vibrateOn)
     val vibrator = remember { context.stepVibrator() }
     LaunchedEffect(soundPool, chimeId) {
         vm.stepChimes.collect {
-            if (soundOn) soundPool.play(chimeId, 0.55f, 0.55f, 1, 0, 1f)
-            if (vibrateOn) vibrator?.vibrate(CHIME_VIBRATION)
+            if (currentSoundOn.value) soundPool.play(chimeId, 0.55f, 0.55f, 1, 0, 1f)
+            if (currentVibrateOn.value) vibrator?.vibrate(CHIME_VIBRATION)
         }
     }
 }
