@@ -32,7 +32,7 @@ import app.cupnlog.data.ShareCodec
 
 /**
  * Phase 3 share: the saved setup as a QR encoding the https App Link (the
- * whole payload rides in the link — no backend). Falls back to share-as-text /
+ * whole payload rides in the link; no backend). Falls back to share-as-text /
  * copy-link / bare code when the link exceeds the ~2 KB QR guard. The screen
  * never shows cup identity for blind setups: the payload itself carries none.
  */
@@ -90,7 +90,7 @@ fun ShareSetupScreen(vm: CuppingViewModel, sessionId: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-            // Summary line above the QR — names/colors never leak here: the
+            // Summary line above the QR: names/colors never leak here; the
             // blind payload carries none.
             Text(
                 if (session.blind) {
@@ -114,7 +114,7 @@ fun ShareSetupScreen(vm: CuppingViewModel, sessionId: String) {
             ShareQrBlock(
                 encode = encode,
                 title = "Set-up code",
-                subtitle = "The whole set-up rides in the link — no server involved.",
+                subtitle = "The whole set-up rides in the link: no server involved.",
             )
 
             Spacer(modifier = Modifier.height(24.dp))

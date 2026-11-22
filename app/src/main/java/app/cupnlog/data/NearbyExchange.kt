@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * The QR path stays the always-available fallback (camera-less / permission-free
  * / non-GMS devices); this class is just the primary transport for the same
- * confirmed-preview flow. Nothing here auto-applies anything — received payloads
+ * confirmed-preview flow. Nothing here auto-applies anything: received payloads
  * are handed to the view model, which routes them through the same confirm
  * preview as an incoming QR.
  */

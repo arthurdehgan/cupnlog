@@ -52,7 +52,7 @@ import app.cupnlog.ui.components.SwatchCircle
  * row's coffees (see `data/CupMatch.kt`) and reveals the names.
  *
  * The coffee name renders beside the label (user decision): the user assigned
- * both, so their pairing is already known — this screen captures the missing
+ * both, so their pairing is already known; this screen captures the missing
  * label→position mapping, it does not hide the pairing. Pre-identification
  * blind surfaces (cupping, ratings, lists) still render positions only.
  */
@@ -236,7 +236,7 @@ private fun CupAssignRow(
 /**
  * Picks the coffee for one cup position: swatch (label inside) with the
  * coffee's name beside it. Coffees already assigned to another position are
- * dimmed and disabled — a label can sit under only one cup.
+ * dimmed and disabled; a label can sit under only one cup.
  */
 @Composable
 private fun CoffeePickerDialog(

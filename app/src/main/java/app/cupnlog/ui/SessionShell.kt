@@ -68,7 +68,7 @@ fun SessionShell(vm: CuppingViewModel) {
     }
 }
 
-/** Quick double pulse — a "brrr brrr" — for step advances. */
+/** Quick double pulse ("brrr brrr") for step advances. */
 private val CHIME_VIBRATION: VibrationEffect =
     VibrationEffect.createWaveform(longArrayOf(0, 60, 120, 60), -1)
 

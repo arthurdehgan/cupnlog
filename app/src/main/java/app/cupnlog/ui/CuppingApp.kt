@@ -39,7 +39,7 @@ fun CuppingApp() {
     SessionShell(vm)
 
     // A deep link recognized while a live session is on screen is queued, not
-    // shown — the timer is never replaced. This prompt offers to open it now
+    // shown; the timer is never replaced. This prompt offers to open it now
     // or let it surface when the session is left (see popQueuedIncoming).
     val queuedIncoming by vm.queuedIncoming.collectAsState()
     val showQueuedDialog by vm.showQueuedDialog.collectAsState()

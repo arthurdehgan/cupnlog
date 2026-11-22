@@ -71,7 +71,7 @@ fun SetupScreen(vm: CuppingViewModel) {
             // )
 
             // Optional display name, shown for this session's saved setups.
-            // Deliberately borderless — an "invisible" text field: the
+            // Deliberately borderless, an "invisible" text field: the
             // placeholder explains what it is while it's empty, and once a
             // name is typed it grows to headline size, acting as the page
             // title above the rest of the form.

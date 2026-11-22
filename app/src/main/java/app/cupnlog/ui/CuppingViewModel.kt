@@ -59,7 +59,7 @@ sealed interface Screen {
 
     /**
      * Blind identification for a saved row: assign each cup position the label
-     * that was under it. `returnTo` keeps `handleBack()` sensible — the flow is
+     * that was under it. `returnTo` keeps `handleBack()` sensible: the flow is
      * opened from the Finished live screen or from the session detail.
      */
     data class IdentifyCups(val sessionId: String, val returnTo: Screen) : Screen
@@ -67,7 +67,7 @@ sealed interface Screen {
     /**
      * Phase 3 share: renders the saved setup's QR (https App Link), with
      * share-as-text / copy-link / bare-code fallbacks. `returnTo` keeps
-     * `handleBack()` sensible — the screen is opened from Home's saved-setup
+     * `handleBack()` sensible: the screen is opened from Home's saved-setup
      * chips (and later from Setup/StartCheck).
      */
     data class ShareSetup(val sessionId: String, val returnTo: Screen) : Screen
@@ -75,7 +75,7 @@ sealed interface Screen {
     /**
      * Phase 4 host: collect each taster's ratings over the wireless exchange
      * (Nearby), with the QR scanner / paste as the always-available fallback.
-     * `returnTo` keeps `handleBack()` sensible — opened from a done session's
+     * `returnTo` keeps `handleBack()` sensible: opened from a done session's
      * detail screen.
      */
     data class CollectRatings(val sessionId: String, val returnTo: Screen) : Screen
@@ -83,14 +83,14 @@ sealed interface Screen {
     /**
      * Phase 4 guest: send this device's own ratings to the host over the
      * wireless exchange, then receive the merged results. `returnTo` keeps
-     * `handleBack()` sensible — opened from a joined done session's detail.
+     * `handleBack()` sensible: opened from a joined done session's detail.
      */
     data class SendRatings(val sessionId: String, val returnTo: Screen) : Screen
 
     /**
      * Phase 3 join: in-app QR scanner with the paste-code fallback below it.
      * Decoded payloads go through [CuppingViewModel.handleIncoming] and the
-     * confirm preview — the scanner itself never saves anything. `returnTo`
+     * confirm preview: the scanner itself never saves anything. `returnTo`
      * (null → Home) keeps `handleBack()` sensible when the scanner is opened
      * as the phase-4 QR fallback from the collect screen.
      */
@@ -110,7 +110,7 @@ sealed interface Screen {
  * The rating screen's entry modes. The choice is session-scoped view-model
  * state: leaving the Ratings screen and coming back keeps it, while every
  * fresh or reset session defaults back to BY_CUP. Both modes write the same
- * per-cup ratings — the mode is only the order of entry, never persisted.
+ * per-cup ratings; the mode is only the order of entry, never persisted.
  */
 enum class RatingMode(val label: String) {
     BY_CUP("By cup"),
@@ -201,7 +201,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Id of the planned row the current StartCheck screen is about to run (set
      * when a saved-setup chip or a "Run this setup" button was tapped). While
-     * this is non-null, StartCheck hides its "Save setup" action — the row
+     * this is non-null, StartCheck hides its "Save setup" action: the row
      * already exists and the run will convert it on Done.
      */
     private val _plannedRunSource = MutableStateFlow<String?>(null)
@@ -308,11 +308,11 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         }
         // Deep links land here from MainActivity (onCreate / onNewIntent), via
         // the application's pending-link holder. Everything routes through
-        // [handleIncoming] — queueing during a live session, confirm preview
+        // [handleIncoming]: queueing during a live session, confirm preview
         // otherwise. Dedup by seq: every entry is handled at most once per
         // view model, even though all stacked instances share the same holder.
         // Plain Main (not the implicit Main.immediate): the link must be
-        // handled AFTER the constructor finishes — an immediate dispatch would
+        // handled AFTER the constructor finishes: an immediate dispatch would
         // run this collector inline while the later-declared state still
         // doesn't exist.
         viewModelScope.launch(Dispatchers.Main) {
@@ -426,7 +426,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Opens the identification screen for a saved row. A row that is already
      * revealed (re-matching) starts from its current assignment, so fixing one
-     * mistaken cup is a single change; a fresh match starts empty — the cups
+     * mistaken cup is a single change; a fresh match starts empty: the cups
      * were mixed, so no position is known yet.
      */
     fun openIdentifyCups(sessionId: String, returnTo: Screen) {
@@ -459,7 +459,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * Confirms the identification: applies the permutation and stamps the
      * reveal (first match), or re-permutes an already-revealed row (re-match,
      * `revealedAtMs` untouched). No-op unless every cup position carries a
-     * distinct in-range coffee — [matchAndReveal] validates the bijection too.
+     * distinct in-range coffee; [matchAndReveal] validates the bijection too.
      */
     fun confirmMatch(sessionId: String) {
         val match = _pendingMatch.value
@@ -493,7 +493,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         _screen.value = Screen.LabelCoffees
     }
 
-    /** "Set up cupping" on the home screen — a fresh setup, no planned row behind it.
+    /** "Set up cupping" on the home screen: a fresh setup, no planned row behind it.
      *  The draft is reset to the defaults: a stale draft from a saved-setup
      *  edit/run must not leak its coffees into the new setup. */
     fun openSetup() {
@@ -567,7 +567,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
                 val fromPlannedRun = _plannedRunSource.value != null
                 if (fromPlannedRun) {
                     // "Back" on a planned-run check is not the discard contract
-                    // that ends a session — it simply leaves the run, and the
+                    // that ends a session; it simply leaves the run, and the
                     // planned row stays intact for later.
                     _plannedRunSource.value = null
                 }
@@ -589,8 +589,8 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
                     startedAndNotFinished -> _showLeaveDialog.value = true
                     // Back from an unstarted run that carries a fresh setup
                     // (the guided flow's just-created one) returns to the
-                    // ready-to-cup screen, where the setup can still be saved
-                    // — nothing is discarded yet.
+                    // ready-to-cup screen, where the setup can still be saved;
+                    // nothing is discarded yet.
                     freshUnstartedSetup ->
                         _screen.value = Screen.StartCheck(returnTo = Screen.LabelCoffees)
                     else -> discardLiveSession()
@@ -648,7 +648,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Back from an unstarted session, or confirmed "End & discard" — land on Home. */
+    /** Back from an unstarted session, or confirmed "End & discard": land on Home. */
     fun discardLiveSession() {
         resetLiveSession()
         _screen.value = Screen.Home
@@ -775,7 +775,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Ratings-screen exit after Done already saved: writes the VM-held edits
      * into the saved row, replacing this device's previous entries per
-     * raterId (idempotent — the same replace-per-rater rule the QR merge uses).
+     * raterId (idempotent; the same replace-per-rater rule the QR merge uses).
      * No-op while the session is still running: there, Done does the writing.
      */
     private fun persistMyRatingsIfFinished() {
@@ -798,7 +798,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * Explicit blind reveal for a saved session (never automatic; not
-     * reversible — see [reveal]). Only meaningful for own sessions: joined
+     * reversible; see [reveal]). Only meaningful for own sessions: joined
      * copies get their reveal from the host's broadcast (phase 4).
      */
     fun revealBlind(sessionId: String) {
@@ -844,7 +844,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * An import recognized while a live session was on screen. Never replaces
      * the live session: a dialog offers to open it now or after the session
      * ([popQueuedIncoming] surfaces it when the session surface is left).
-     * The prompt has its own visibility flag — "not now" closes the dialog
+     * The prompt has its own visibility flag: "not now" closes the dialog
      * while the payload stays queued for the session's end.
      */
     private val _queuedIncoming = MutableStateFlow<IncomingShare?>(null)
@@ -862,7 +862,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * The one entry point for every incoming form (deep link, scanner, paste).
-     * Recognized payloads route to the confirm preview — or queue with a
+     * Recognized payloads route to the confirm preview, or queue with a
      * prompt when a live session is on screen (never replacing the timer).
      * Non-CofCup codes are ignored (they only ever reach here from the
      * scanner/paste, where the plain hint is shown in place).
@@ -916,7 +916,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         showIncoming(queued, returnTo = Screen.LiveSession)
     }
 
-    /** Dialog action "After this session" — the import stays queued. */
+    /** Dialog action "After this session": the import stays queued. */
     fun dismissQueuedIncoming() {
         _showQueuedDialog.value = false
     }
@@ -999,7 +999,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * Merges one rater's incoming ratings into the matching session
-     * (replace-per-`raterId`, idempotent) — see [RatingMerge]. No-op when no
+     * (replace-per-`raterId`, idempotent); see [RatingMerge]. No-op when no
      * such session exists (different cupping).
      */
     private suspend fun mergeIncomingRatings(ratings: ShareCodec.SharedRatings) {
@@ -1012,7 +1012,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * Absorbs merged results into the local (joined) copy: everyone's entries
      * except this device's own (own ratings + notes stay local, decision 8).
      * A blind reveal backfills the position-ordered identities and stamps
-     * `revealedAtMs` exactly once — see [RatingMerge].
+     * `revealedAtMs` exactly once; see [RatingMerge].
      */
     private suspend fun mergeGroupResults(results: ShareCodec.SharedGroupResults) {
         val myId = repository.getOrCreateMyId()
@@ -1097,7 +1097,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
             persistDraftAsPlanned()
             editingPlannedSessionId = null
             // Saving leaves for Home: any unstarted run still holding this
-            // draft in memory is void now — quick-starting later must not
+            // draft in memory is void now; quick-starting later must not
             // resurrect it.
             _live.value?.let { if (it.startedAtMs == null && !it.finished) resetLiveSession() }
             _screen.value = Screen.Home
@@ -1106,7 +1106,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
 
     /**
      * "Share setup" on Ready to cup. Running an existing saved setup: its row
-     * exists — share that id directly (no duplicate row). Otherwise save the
+     * exists: share that id directly (no duplicate row). Otherwise save the
      * draft first (same-row overwrite on an edit, a new planned row otherwise)
      * and share the saved row. Back/Done on the share screen returns to the
      * Ready-to-cup screen this was opened from.
@@ -1154,7 +1154,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * On the pre-start "Cupping" screen (e.g. right after a quick start, which
      * has no cups set up), the user can still pick a saved setup: its plan
      * replaces the live one, and Done later converts that planned row in place
-     * — the same contract as running it from a Home chip. Only possible before
+     * (the same contract as running it from a Home chip). Only possible before
      * the timer starts; ignored once the session is running or finished.
      * Picking another chip swaps the plan and re-points the Done conversion at
      * it (a previously picked row simply stays planned); tapping the already
@@ -1197,7 +1197,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
     /**
      * Tapping the already-selected setup again on the pre-start "Cupping"
      * screen cancels the pick: the live session (and draft) are restored to
-     * exactly the state before the first pick — the empty plan for a
+     * exactly the state before the first pick: the empty plan for a
      * quick-started session, so Done again saves an "Empty Cupping Session".
      * Ignored when nothing was picked from that screen (e.g. the setup came
      * from a Home chip) or once the timer has started.
@@ -1276,7 +1276,7 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
         val stepStartSec = CuppingTimeline.stepAt(elapsedMs / 1000).startSec
         if (stepStartSec == announcedStepStartSec) return
         announcedStepStartSec = stepStartSec
-        // 0:00 is the timer start itself, not a step advance — stay silent there.
+        // 0:00 is the timer start itself, not a step advance; stay silent there.
         if (stepStartSec > 0) _stepChimes.tryEmit(Unit)
     }
 }

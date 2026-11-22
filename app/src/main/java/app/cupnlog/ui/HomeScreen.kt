@@ -57,7 +57,7 @@ import app.cupnlog.data.SavedSession
 import app.cupnlog.ui.components.displaySessionName
 
 /**
- * The app's home: launcher icon, title, history, and the two entry points —
+ * The app's home: launcher icon, title, history, and the two entry points:
  * straight to the timer, or the full guided setup.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,7 +93,7 @@ fun HomeScreen(vm: CuppingViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // The launcher icon is an adaptive icon (not a plain drawable), so a
-                // classic ImageView is needed — painterResource() would crash on it.
+                // classic ImageView is needed; painterResource() would crash on it.
                 AndroidView(
                     modifier = Modifier.size(96.dp),
                     factory = { context ->
@@ -173,7 +173,7 @@ fun HomeScreen(vm: CuppingViewModel) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    "Join a cupping — scan or paste a code",
+                    "Join a cupping: scan or paste a code",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -259,7 +259,7 @@ private fun PlannedSetupChip(
                     // M3's DropdownMenu always opens downward from its anchor;
                     // this popup aligns to the box's bottom edge so the menu
                     // grows upwards from the ⋮ button instead. It must be gated
-                    // on menuOpen — a Popup renders whenever it is composed.
+                    // on menuOpen; a Popup renders whenever it is composed.
                     if (menuOpen) {
                         Popup(
                             alignment = Alignment.BottomStart,

@@ -61,7 +61,7 @@ class RatingAverageTest {
 
     @Test
     fun formatAverage_handlesNullAndValue() {
-        assertEquals("\u2014", RatingAverages.formatAverage(null))
+        assertEquals("-", RatingAverages.formatAverage(null))
         assertEquals("8.00", RatingAverages.formatAverage(8.0))
         assertEquals("7.50", RatingAverages.formatAverage(7.5))
     }

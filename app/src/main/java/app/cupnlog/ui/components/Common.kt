@@ -170,7 +170,7 @@ fun SwatchCircle(
 }
 
 /**
- * The coffee identification card: one interactive line per cup — colour
+ * The coffee identification card: one interactive line per cup, with colour
  * (label inside), name and table position on the left, this rater's overall
  * score on the right. Tapping a scored line expands the six attribute squares
  * and notes below it; tapping again retracts (expansion is independent per
@@ -207,8 +207,8 @@ fun CoffeeListCard(
 }
 
 /** One identification line: identity on the left, overall on the right, and
- *  — when the cup was scored — the expandable detail (attribute squares +
- *  notes) below. */
+ *  the expandable detail (attribute squares + notes) below when the cup was
+ *  scored. */
 @Composable
 private fun CoffeeLine(position: Int, coffee: CoffeeEntry, rating: CupRating?) {
     val rated = rating?.isRated == true
@@ -239,7 +239,7 @@ private fun CoffeeLine(position: Int, coffee: CoffeeEntry, rating: CupRating?) {
                 )
             }
             Text(
-                "Overall ${rating?.overall ?: "\u2014"}",
+                "Overall ${rating?.overall ?: "-"}",
                 style = if (rated) {
                     MaterialTheme.typography.titleMedium
                 } else {
@@ -308,7 +308,7 @@ private fun ScoreSquare(field: RatingField, score: Int?, modifier: Modifier = Mo
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                score?.toString() ?: "\u2014",
+                score?.toString() ?: "-",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -323,7 +323,7 @@ private fun ScoreSquare(field: RatingField, score: Int?, modifier: Modifier = Mo
     }
 }
 
-/** Blind, un-identified coffee list: positions only ("Cup 1…N") — no names,
+/** Blind, un-identified coffee list: positions only ("Cup 1…N"); no names,
  *  colours or labels anywhere, including content descriptions. */
 @Composable
 fun BlindCoffeeListCard(cupCount: Int, title: String = "Coffee identification") {

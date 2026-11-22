@@ -67,7 +67,7 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
     val nameHeader = session.plan.sessionName.isNotBlank() &&
         !(session.blind && session.revealedAtMs == null)
 
-    // This device's ratings, keyed by cup position — shown inline on the
+    // This device's ratings, keyed by cup position; shown inline on the
     // identification card's lines (overall on the right, detail on tap).
     val myRatingsByCup = session.ratings
         .filter { it.raterId == myId }
@@ -135,13 +135,13 @@ fun SessionDetailScreen(vm: CuppingViewModel, sessionId: String) {
                     )
                 }
             } else if (session.blind && session.revealedAtMs == null) {
-                // Blind, not yet identified: positions only — never name/colour/label.
+                // Blind, not yet identified: positions only; never name/colour/label.
                 BlindCoffeeListCard(cupCount = session.plan.cupCount)
                 if (session.ratings.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         "Ask the host for the reveal. Until then cups stay at their " +
-                            "positions — the scores are still comparable.",
+                            "positions: the scores are still comparable.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

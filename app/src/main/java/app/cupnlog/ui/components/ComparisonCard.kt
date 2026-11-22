@@ -39,7 +39,7 @@ import app.cupnlog.data.scoreFor
  * redesign.
  *
  * Blind sessions that have not been revealed pass [cupLabel] / [cupColor] that
- * render positions only ("Cup N", a neutral swatch) — never a name, label or
+ * render positions only ("Cup N", a neutral swatch); never a name, label or
  * colour from the plan. Revealed (and non-blind) rows use the default identity.
  */
 @Composable
@@ -196,7 +196,7 @@ private fun OverallBox(name: String, score: Int?, isMine: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                score?.toString() ?: "\u2014",
+                score?.toString() ?: "-",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -225,7 +225,7 @@ private fun MiniChip(label: String, score: Int?, modifier: Modifier = Modifier) 
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                score?.toString() ?: "\u2014",
+                score?.toString() ?: "-",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,

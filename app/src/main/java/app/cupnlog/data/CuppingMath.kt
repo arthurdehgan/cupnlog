@@ -23,7 +23,7 @@ object CuppingMath {
     fun coffeeTotalG(cupSizeMl: Int, cupCount: Int): Double =
         round2(cupSizeMl * cupCount * GRAMS_PER_ML)
 
-    /** Round to two decimals, half up — e.g. 8.25 g stays 8.25 g. */
+    /** Round to two decimals, half up, e.g. 8.25 g stays 8.25 g. */
     fun round2(value: Double): Double =
         BigDecimal(value).setScale(2, RoundingMode.HALF_UP).toDouble()
 

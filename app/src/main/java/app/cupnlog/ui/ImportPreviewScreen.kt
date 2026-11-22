@@ -35,9 +35,9 @@ import app.cupnlog.ui.components.sessionSummary
 
 /**
  * Phase 3 confirm preview: shows exactly what an incoming link / scan / paste
- * carries — host name when known, what would be saved — and asks. Nothing is
+ * carries: host name when known, what would be saved, and asks. Nothing is
  * auto-saved, auto-started or auto-revealed, ever. Blind previews render
- * "Cup 1…N" only — the payload carries identities, but showing them here
+ * "Cup 1…N" only; the payload carries identities, but showing them here
  * would spoil the joiner's own blind tasting before it starts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -297,7 +297,7 @@ fun ImportPreviewScreen(vm: CuppingViewModel) {
     }
 }
 
-/** One preview line: "Cup 1 — Ethiopia" (names as carried by the payload). */
+/** One preview line: "Cup 1: Ethiopia" (names as carried by the payload). */
 @Composable
 private fun CupPreviewLine(index: Int, coffee: CoffeeEntry) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -308,7 +308,7 @@ private fun CupPreviewLine(index: Int, coffee: CoffeeEntry) {
             modifier = Modifier.width(72.dp),
         )
         Text(
-            if (coffee.name.isBlank()) "\u2014" else coffee.name,
+            if (coffee.name.isBlank()) "-" else coffee.name,
             style = MaterialTheme.typography.bodyLarge,
             color = if (coffee.name.isBlank()) {
                 MaterialTheme.colorScheme.onSurfaceVariant

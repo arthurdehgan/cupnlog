@@ -77,7 +77,7 @@ import kotlin.math.roundToInt
  * back keeps it. Both modes write the same per-cup `CupRating`s through the
  * view model, so switching modes never loses or duplicates an entry.
  *
- * Blind sessions render positions only — "Cup N" — with no names, colours or
+ * Blind sessions render positions only ("Cup N"), with no names, colours or
  * labels anywhere (see `Blind.kt`); the session shell keeps chimes, the
  * screen-on flag and the Done save working while this screen is on top.
  */
@@ -150,7 +150,7 @@ fun RatingsScreen(vm: CuppingViewModel) {
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
-            // Cupping complete: no "Current step" and no clock any more —
+            // Cupping complete: no "Current step" and no clock any more;
             // the timer stopped when Done was reached.
             if (!current.isLast) {
                 CompactTimerCard(elapsedSec = elapsedSec, current = current)
@@ -325,7 +325,7 @@ private fun CupRow(cup: Int, plan: CuppingPlan, rating: CupRating?, onClick: () 
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ) {
                     Text(
-                        "Overall ${rating.overall ?: "\u2014"}",
+                        "Overall ${rating.overall ?: "-"}",
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     )
@@ -344,7 +344,7 @@ private fun CupRow(cup: Int, plan: CuppingPlan, rating: CupRating?, onClick: () 
 /**
  * The full-screen per-cup editor: six informational 1–10 sliders, the strictly
  * manual Overall (1–10), and a notes field capped at 500 characters. An
- * unrated slider shows "—" and sits at 5; only an actual change records a
+ * unrated slider shows "-" and sits at 5; only an actual change records a
  * score, so opening and closing the editor never creates a rating.
  */
 @Composable
@@ -602,7 +602,7 @@ private fun NotesDialog(
 /**
  * A 1–10 integer slider, optionally with leading (e.g. a cup swatch) and
  * trailing (e.g. the notes icon) slots for the "By category" per-cup rows.
- * The value text stays "—" until a score is set.
+ * The value text stays "-" until a score is set.
  */
 @Composable
 private fun RatingSlider(
@@ -628,7 +628,7 @@ private fun RatingSlider(
             modifier = Modifier.weight(1f),
         )
         Text(
-            value?.toString() ?: "\u2014",
+            value?.toString() ?: "-",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.width(40.dp),
@@ -708,7 +708,7 @@ private fun CategoryCupSlider(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    value?.toString() ?: "\u2014",
+                    value?.toString() ?: "-",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.width(40.dp),

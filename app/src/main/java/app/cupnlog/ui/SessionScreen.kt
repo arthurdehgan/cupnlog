@@ -174,7 +174,7 @@ fun SessionScreen(vm: CuppingViewModel) {
                         sessionId = session.savedSessionId ?: session.plannedSessionId,
                         blindRevealed = savedRow?.revealedAtMs != null,
                         // After a confirmed identification the saved row's
-                        // coffees are the ones reordered into cup positions —
+                        // coffees are the ones reordered into cup positions;
                         // the live plan keeps the setup order.
                         revealedCoffees = savedRow?.plan?.coffees,
                         ratingsByCup = ratingsByCup,
@@ -217,7 +217,7 @@ fun SessionScreen(vm: CuppingViewModel) {
 
 /** Timer not running yet: instructions, the big Start button, and a step
  *  preview. The saved-setup picker ([showSetupPicker]) appears only on a
- *  quick-started run (straight from the timer with no cups) — it covers
+ *  quick-started run (straight from the timer with no cups); it covers
  *  picking a setup plus swapping/cancelling a pick before the timer starts. */
 @Composable
 private fun ReadyToStartContent(
@@ -293,7 +293,7 @@ private fun ReadyToStartContent(
 
 /** One saved setup on the pre-start "Cupping" screen: tap loads it into the
  *  session that is about to start (its planned row converts to done on Done).
- *  Blind, un-revealed rows show a crossed-eye icon after the subtitle — names,
+ *  Blind, un-revealed rows show a crossed-eye icon after the subtitle; names,
  *  labels and colours are never rendered here. */
 @Composable
 private fun SavedSetupPickerChip(
@@ -352,7 +352,7 @@ private fun SavedSetupPickerChip(
 
 /** Timer running: the current step's title with the elapsed timer inside a
  *  progress ring (the ring itself fills across the current step), then the
- *  step timeline — where the current row shows the live clock. */
+ *  step timeline: where the current row shows the live clock. */
 @Composable
 private fun RunningContent(plan: CuppingPlan, elapsedSec: Long, current: CuppingStep) {
     val next = CuppingTimeline.nextStep(current)
@@ -405,7 +405,7 @@ private fun RunningContent(plan: CuppingPlan, elapsedSec: Long, current: Cupping
             )
             Spacer(modifier = Modifier.height(8.dp))
             // Blind sessions must not leak identities through the Done step's
-            // instruction (the colour/number wording) — swap in the neutral
+            // instruction (the colour/number wording); swap in the neutral
             // variant without moving any step window out of CuppingTimeline.
             val instruction = if (plan.blind && current.isLast) {
                 blindDoneInstruction(plan.cupCount)
@@ -519,8 +519,8 @@ private fun StepLeadIcon(completed: Boolean, isCurrent: Boolean, index: Int) {
 /** Done screen: coffee identification, unless this was an empty quick-start session.
  *  Blind, un-identified sessions show positions only and offer the "Identify
  *  the cups" flow (label under each cup → position). Revealed sessions list
- *  the coffees in cup positions — [revealedCoffees] from the saved row, not
- *  the live plan — with this device's ratings inline ([ratingsByCup]). */
+ *  the coffees in cup positions: [revealedCoffees] from the saved row, not
+ *  the live plan, with this device's ratings inline ([ratingsByCup]). */
 @Composable
 private fun FinishedContent(
     vm: CuppingViewModel,
@@ -582,7 +582,7 @@ private fun FinishedContent(
     }
     // Bottom actions as one full-width stack: the primary next action filled,
     // the escape hatches outlined below it. Identical rhythm in every variant
-    // (blind, revealed, empty session) — only which action is primary changes.
+    // (blind, revealed, empty session); only which action is primary changes.
     Spacer(modifier = Modifier.height(24.dp))
     if (plan.blind && !blindRevealed && sessionId != null) {
         Button(

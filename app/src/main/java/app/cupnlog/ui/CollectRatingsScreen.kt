@@ -56,7 +56,7 @@ import kotlinx.coroutines.flow.update
  * a QR for those that dropped off).
  *
  * Confirm rule (same invariant as the ImportPreview path, different surface):
- * a wireless payload is never applied on arrival — it lands in a card and is
+ * a wireless payload is never applied on arrival; it lands in a card and is
  * merged only when the host taps Add. Re-submission replaces the pending set
  * for that rater (replace-per-`raterId`, matching the merge itself).
  */
@@ -182,7 +182,7 @@ fun CollectRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Scre
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 "Keep this screen open. Each taster sends their ratings once, at the " +
-                    "end of the cupping — nothing is shared until then.",
+                    "end of the cupping: nothing is shared until then.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

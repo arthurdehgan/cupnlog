@@ -180,8 +180,8 @@ data class SavedSession(
 
 /**
  * Planned→done conversion (user decision 3): when a run started from a planned
- * session reaches Done, the result overwrites the SAME row — same id and
- * createdAt, status flips to DONE — carrying the plan the run actually used and
+ * session reaches Done, the result overwrites the SAME row: same id and
+ * createdAt, status flips to DONE, carrying the plan the run actually used and
  * the ratings captured during it. No second artifact is ever created.
  *
  * The blind flag follows the plan the run used: editing a planned row and

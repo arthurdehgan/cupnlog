@@ -19,7 +19,7 @@ class CupnlogApplication : Application() {
      * exists (cold start) is still delivered. The value is never cleared:
      * entries carry a monotonically increasing seq, and each view model
      * handles every entry with a seq above what it has already handled. With
-     * several stacked activity instances each view model sees the same value —
+     * several stacked activity instances each view model sees the same value:
      * clearing here would race and starve the one actually on screen.
      */
     private val _pendingIncomingLink = MutableStateFlow<IncomingLink?>(null)

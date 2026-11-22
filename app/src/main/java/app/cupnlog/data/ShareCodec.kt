@@ -11,7 +11,7 @@ import java.util.zip.Inflater
 /**
  * Encodes and decodes the QR / link payloads that move cuppings between devices.
  * The QR encodes an https App Link whose query string carries the whole payload
- * — no backend, the link IS the data (user decision 5):
+ * (no backend; the link IS the data, user decision 5):
  *
  *   https://<pages-host><APP_LINK_PATH>?v=1&d=<base64url(deflate(json))>
  *
@@ -22,17 +22,17 @@ import java.util.zip.Inflater
  *   - the bare `d=` payload (the raw code shown under the QR).
  *
  * `kind` discriminates the payload:
- *  - "setup" / "blind_setup" (phase 3) — a saved setup, host → guest. Both
+ *  - "setup" / "blind_setup" (phase 3): a saved setup, host → guest. Both
  *    carry the full coffee identities (names, labels, colours): the joiner's
  *    blind copy must be able to run the same end-of-session identify-by-label
  *    as the host (user decision, 2026-11-13). The joiner's copy still behaves
- *    as blind — positions only on every pre-reveal surface — because the kind
+ *    as blind, positions only on every pre-reveal surface, because the kind
  *    marks the row blind, not because data is withheld.
- *  - "ratings" (phase 4) — one rater's own scores, guest → host, so the host
+ *  - "ratings" (phase 4): one rater's own scores, guest → host, so the host
  *    can merge them. Carries attributes, the strictly manual Overall and,
  *    unless the rater opted out, notes. Identity fields other than the rater
  *    envelope are ignored (identities only ever arrive via group_results).
- *  - "group_results" (phase 4) — every rater's entries, host → guests, plus
+ *  - "group_results" (phase 4): every rater's entries, host → guests, plus
  *    an optional blind reveal mapping (position → identity) that backfills a
  *    guest's copy and stamps its reveal. No new kind beyond this.
  *
@@ -44,7 +44,7 @@ import java.util.zip.Inflater
  * size/count ranges, per-coffee / rater / notes caps, score ranges, a
  * decompression-bomb cap, and a ~2 KB practical QR guard for the generated
  * link (fall back to share-as-text / copy-link when over). Validation never
- * auto-applies anything — the caller always shows a confirm preview first.
+ * auto-applies anything: the caller always shows a confirm preview first.
  */
 object ShareCodec {
 
@@ -117,7 +117,7 @@ object ShareCodec {
          *  only on pre-reveal surfaces), but [coffees] carry full identities
          *  so the end-of-session identify works exactly like the host's. */
         val blind: Boolean,
-        /** The coffees as received — real names/labels/colours for both kinds. */
+        /** The coffees as received: real names/labels/colours for both kinds. */
         val coffees: List<CoffeeEntry>,
     )
 
@@ -169,7 +169,7 @@ object ShareCodec {
 
     /** The encoded forms of a payload, produced by the `encode*` functions. */
     data class ShareEncode(
-        /** The full https App Link URL — what the QR renders. */
+        /** The full https App Link URL: what the QR renders. */
         val url: String,
         /** The bare payload (the offline fallback code shown under the QR). */
         val code: String,
@@ -184,7 +184,7 @@ object ShareCodec {
     /**
      * Encodes a saved session as a shareable setup. Intended for planned rows
      * (the host's `sid` must stay stable for join idempotency); a done row
-     * encodes the same way — its id is just as unique per event.
+     * encodes the same way; its id is just as unique per event.
      */
     fun encodeSetup(session: SavedSession, hostName: String): ShareEncode {
         val kind = if (session.blind) KIND_BLIND_SETUP else KIND_SETUP
@@ -210,8 +210,8 @@ object ShareCodec {
 
     /**
      * Encodes this device's own ratings for [raterId] as a "ratings" payload
-     * for the host to merge. The `sid` is the host session id — for a joined
-     * copy that is [SavedSession.sessionRef], not the local row id — so the
+     * for the host to merge. The `sid` is the host session id, for a joined
+     * copy that is [SavedSession.sessionRef], not the local row id, so the
      * host can match it to its own session.
      */
     fun encodeRatings(
@@ -355,7 +355,7 @@ object ShareCodec {
         throw ShareException(ShareError.NOT_A_COFCUP_CODE)
     }
 
-    /** `v=1&d=…` — split on '&'/'='; values carry no reserved characters. */
+    /** `v=1&d=…`: split on '&'/'='; values carry no reserved characters. */
     private fun queryValue(query: String, key: String): String? =
         query.split('&')
             .mapNotNull { part ->
@@ -437,7 +437,7 @@ object ShareCodec {
         if (label.length > CoffeeEntry.MAX_LABEL_LENGTH) throw ShareException(ShareError.INVALID_DATA)
         val color = entry.optLong("c", Long.MIN_VALUE)
         // ARGB colours live in 0..0xFFFFFFFF (the palette uses full-alpha
-        // 0xFF… values as *positive* longs — Int would truncate them).
+        // 0xFF… values as *positive* longs; Int would truncate them).
         if (color !in 0L..0xFFFFFFFFL) throw ShareException(ShareError.INVALID_DATA)
         return CoffeeEntry(
             name = name.trim(),

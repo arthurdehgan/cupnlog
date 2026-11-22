@@ -9,10 +9,10 @@ import java.util.Locale
  *
  * Deliberately separate from [CuppingMath]: no rating maths belong in
  * CuppingMath, and none is recomputed inline in UI (guardrails §6). Only the
- * strictly manual Overall is averaged — the six informational attributes are
+ * strictly manual Overall is averaged: the six informational attributes are
  * never averaged into an overall (settled decision 1: Overall is manual only).
  *
- * Rounding follows the house discipline — two decimals, half up — but done
+ * Rounding follows the house discipline, two decimals, half up, but done
  * with exact decimal arithmetic ([BigDecimal] divide) so values like 7.5 or
  * 8.0 stay exact and never pick up a binary `Double` artifact.
  */
@@ -34,5 +34,5 @@ object RatingAverages {
 
     /** Formats an average for display, e.g. 8.0 → "8.00"; null → a quiet dash. */
     fun formatAverage(average: Double?): String =
-        average?.let { String.format(Locale.US, "%.2f", it) } ?: "\u2014"
+        average?.let { String.format(Locale.US, "%.2f", it) } ?: "-"
 }

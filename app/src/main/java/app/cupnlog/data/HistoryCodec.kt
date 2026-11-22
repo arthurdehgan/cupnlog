@@ -8,7 +8,7 @@ import org.json.JSONObject
  *
  * Decode is tolerant in granularity: a malformed record drops only that record,
  * but within a record a malformed rating drops only that rating and a malformed
- * coffee entry only that coffee — never the whole session. New optional fields
+ * coffee entry only that coffee, never the whole session. New optional fields
  * are read with `opt*` calls so legacy rows decode untouched.
  */
 internal object HistoryCodec {

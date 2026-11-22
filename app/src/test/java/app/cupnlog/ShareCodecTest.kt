@@ -227,7 +227,7 @@ class ShareCodecTest {
 
     @Test
     fun coffeeArrayMismatch_rejected() {
-        // Two entries for a three-cup setup — positions must cover 1…N.
+        // Two entries for a three-cup setup, positions must cover 1…N.
         assertEquals(
             ShareError.INVALID_DATA,
             decodeError(

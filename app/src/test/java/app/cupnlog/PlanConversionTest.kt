@@ -84,7 +84,7 @@ class PlanConversionTest {
     // Phase 2: blind flag + explicit reveal
     // ------------------------------------------------------------------
 
-    /** The run's plan is authoritative for blind — in both directions. */
+    /** The run's plan is authoritative for blind, in both directions. */
     @Test
     fun conversion_stamps_blind_from_the_run_plan() {
         val planned = plannedSession()
