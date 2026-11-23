@@ -4,18 +4,31 @@ A free, open-source Android app that guides you through a **coffee cupping sessi
 
 ## What it does
 
-1. **Home** — the app opens with a **history** shortcut and two buttons: **Start Cupping** jumps straight into the guided timer without any setup (Step 4.), and **Set up cupping** opens the flow below.
+### Set up and run a session
 
-2. **Set up** — pick your cup size (ml) and how many coffees to cup (1–16).
-   The app will tell you how much coffee you will need to grind for each cup according to the SCA ratio, 8.25 g per 150 ml → *5.5 g per 100 ml*, (e.g. exactly `8.25 g` for a 150 ml cup)
+- Start a timer immediately, or set up a cupping with 1–16 coffees and a cup
+  size. CofCup calculates the coffee amount from the SCA ratio of 8.25 g per
+  150 ml.
+- Give coffees names, numbers, and colors, or make the session blind. Setups
+  can be saved for later; completed sessions appear in History.
+- Before the timer starts, optionally shuffle blind cups and rate each cup's
+  dry-ground aroma intensity. Dry Aroma is a separate 1–10 score from the
+  brewed aroma.
+- Follow the guided timeline for pouring, breaking the crust, cleaning the
+  cups, and tasting. The timer starts at 0:00 when water first hits the
+  grounds. Chimes and vibration can be configured in Settings.
 
-3. **Name the coffees** — You can associate a **number** and a **colour** to each coffee and give it a name to be able to find which cup had which coffee at the end of the session.
+### Rate and share
 
-4. **Start cupping** — This will guide you through a typical cupping session with pouring, breaking the crust, scraping the top of the cup and then tasting.
-
-5. **Done** — check the coffee list you defined earlier to identify the cups by colour/number. Sessions started without any setup are saved to history as an **Empty Cupping Session** (no cups, no coffees).
-
-6. **History** — finished sessions are saved; go back to any previous session's coffee list, and delete sessions you don't need from the history list.
+- Rate each cup's aroma, flavor, acidity, sweetness, mouthfeel, and aftertaste
+  from 1–10. Overall is a separate manual score; tasting notes are optional.
+- In a blind session, coffees stay identified by cup position until the
+  reveal. For group cuppings, share a setup by QR code or app link, collect
+  participants' ratings over Nearby Connections or QR, then share the group
+  results. Imports and merges require confirmation.
+- Browse planned setups and completed sessions in History. Review ratings and
+  notes or remove sessions you no longer need. Settings shows the installed
+  version and build number and controls chime, vibration, and note-sharing.
 
 ## The cupping timeline used (0:00 = first water hits the grounds)
 
@@ -33,9 +46,12 @@ Timers follow the [SCA cupping protocol](https://sca.coffee/research/cupping-pro
 
 ## Tech stack
 
-- Kotlin + **Jetpack Compose** (Material 3), no Internet permission required — fully offline
+- Kotlin + **Jetpack Compose** (Material 3)
 - Jetpack ViewModel + coroutines for the timers
 - AndroidX DataStore (JSON payload) for the session history — no external serialization plugin needed
+- No backend: sessions stay on-device unless you choose to share them directly
+  with participants. Nearby Connections supports wireless ratings exchange;
+  QR codes and app links provide a fallback.
 - **AGP 9.5** with built-in Kotlin support (no `kotlin-android` plugin), Gradle 9.6, `compileSdk 37`, `minSdk 26`
 
 ## Building
@@ -56,7 +72,6 @@ gradle :app:testDebugUnitTest   # runs the ratio/timeline maths unit tests
 
 ## Roadmap
 
-- Per-coffee tasting notes (rating each cup, saved with the history)
 - Screen to freely walk the timeline while keeping the session alive mid-cupping (wizard re-entry)
 - Localisation (English UI today)
 

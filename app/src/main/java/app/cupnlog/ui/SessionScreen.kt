@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -48,6 +50,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,7 +62,9 @@ import app.cupnlog.data.CupRating
 import app.cupnlog.data.CuppingPlan
 import app.cupnlog.data.CuppingStep
 import app.cupnlog.data.CuppingTimeline
+import app.cupnlog.data.RatingField
 import app.cupnlog.data.SavedSession
+import app.cupnlog.data.SessionOrigin
 import app.cupnlog.data.SessionStatus
 import app.cupnlog.data.blindDoneInstruction
 import app.cupnlog.data.isRated
@@ -65,6 +72,7 @@ import app.cupnlog.ui.components.BlindCoffeeListCard
 import app.cupnlog.ui.components.CoffeeListCard
 import app.cupnlog.ui.components.ConfirmDialog
 import app.cupnlog.ui.components.displaySessionName
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +106,7 @@ fun SessionScreen(vm: CuppingViewModel) {
                         when {
                             finished -> "Session complete"
                             running -> "Cupping in progress"
+                            session.plan.cupCount > 0 -> "Preparation"
                             else -> "Cupping"
                         }
                     )
@@ -161,6 +170,9 @@ fun SessionScreen(vm: CuppingViewModel) {
                     // The Finished screen reads the reveal state from the saved
                     // history row (see onCuppingComplete's savedSessionId).
                     val savedRow = history.firstOrNull { it.id == session.savedSessionId }
+                    val origin = savedRow?.origin
+                        ?: history.firstOrNull { it.id == session.plannedSessionId }?.origin
+                        ?: SessionOrigin.OWN
                     // This device's ratings keyed by cup position, shown inline
                     // on the identification card; the VM-held ratings cover the
                     // brief window before the Done save has landed.
@@ -173,8 +185,9 @@ fun SessionScreen(vm: CuppingViewModel) {
                         plan = session.plan,
                         sessionId = session.savedSessionId ?: session.plannedSessionId,
                         blindRevealed = savedRow?.revealedAtMs != null,
+                        sessionOrigin = origin,
                         // After a confirmed identification the saved row's
-                        // coffees are the ones reordered into cup positions —
+                        // coffees are the ones reordered into cup positions;
                         // the live plan keeps the setup order.
                         revealedCoffees = savedRow?.plan?.coffees,
                         ratingsByCup = ratingsByCup,
@@ -184,6 +197,8 @@ fun SessionScreen(vm: CuppingViewModel) {
                     vm = vm,
                     plan = session.plan,
                     elapsedSec = elapsedSec,
+                    myRatings = myRatings,
+                    blindCupsShuffled = session.blindCupsShuffled,
                     plannedSetups = plannedSetups,
                     selectedSetupId = session.plannedSessionId,
                     // The picker is a quick-start convenience: a run started
@@ -217,13 +232,15 @@ fun SessionScreen(vm: CuppingViewModel) {
 
 /** Timer not running yet: instructions, the big Start button, and a step
  *  preview. The saved-setup picker ([showSetupPicker]) appears only on a
- *  quick-started run (straight from the timer with no cups) — it covers
+ *  quick-started run (straight from the timer with no cups); it covers
  *  picking a setup plus swapping/cancelling a pick before the timer starts. */
 @Composable
 private fun ReadyToStartContent(
     vm: CuppingViewModel,
     plan: CuppingPlan,
     elapsedSec: Long,
+    myRatings: Map<Int, CupRating>,
+    blindCupsShuffled: Boolean,
     plannedSetups: List<SavedSession>,
     selectedSetupId: String?,
     showSetupPicker: Boolean,
@@ -231,17 +248,79 @@ private fun ReadyToStartContent(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "Get everything ready",
+                if (plan.cupCount > 0) "Pre-cupping preparation" else "Get everything ready",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "\u2022 Heat water while you set up the cups and grind the coffee.\n" +
-                "\u2022 Place your cups in a row.\n" +
-                "\u2022 Press START as water first hits the grounds of the first coffee.",
+                if (plan.cupCount > 0) {
+                    "Preparation is optional. When ready, press Start cupping as water " +
+                        "first hits the grounds; that is 0:00."
+                } else {
+                    "\u2022 Heat water while you set up the cups and grind the coffee.\n" +
+                        "\u2022 Place your cups in a row.\n" +
+                        "\u2022 Press START as water first hits the grounds of the first coffee."
+                },
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+    if (plan.cupCount > 0) {
+        Spacer(modifier = Modifier.height(12.dp))
+        if (plan.blind) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Shuffle the cups",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            "Mix the labeled cups without looking at the labels.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Checkbox(
+                        checked = blindCupsShuffled,
+                        onCheckedChange = vm::setBlindCupsShuffled,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    "Dry aroma",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Smell the dry grounds and optionally rate aroma intensity from 1 to 10. " +
+                        "Use 1 for very faint and 10 for very intense. This is separate " +
+                        "from the brewed aroma score.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                repeat(plan.cupCount) { cup ->
+                    DryAromaPreparationRow(
+                        label = if (plan.blind) "Cup ${cup + 1}"
+                        else plan.coffees.getOrNull(cup)?.displayName ?: "Cup ${cup + 1}",
+                        score = myRatings[cup]?.dryAroma,
+                        onScore = { vm.setCupRatingScore(cup, RatingField.DRY_AROMA, it) },
+                    )
+                }
+            }
         }
     }
     Spacer(modifier = Modifier.height(16.dp))
@@ -291,9 +370,40 @@ private fun ReadyToStartContent(
     StepsCard(elapsedSec = elapsedSec, currentStep = null)
 }
 
+@Composable
+private fun DryAromaPreparationRow(
+    label: String,
+    score: Int?,
+    onScore: (Int) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                score?.let { "$it / 10" } ?: "Not rated",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Slider(
+            value = (score ?: 5).toFloat(),
+            onValueChange = { onScore(it.roundToInt()) },
+            valueRange = 1f..10f,
+            steps = 8,
+            modifier = Modifier.semantics {
+                contentDescription = "Dry aroma intensity for $label"
+                stateDescription = score?.let { "$it out of 10" } ?: "Not rated"
+            },
+        )
+    }
+}
+
 /** One saved setup on the pre-start "Cupping" screen: tap loads it into the
  *  session that is about to start (its planned row converts to done on Done).
- *  Blind, un-revealed rows show a crossed-eye icon after the subtitle — names,
+ *  Blind, un-revealed rows show a crossed-eye icon after the subtitle; names,
  *  labels and colours are never rendered here. */
 @Composable
 private fun SavedSetupPickerChip(
@@ -352,7 +462,7 @@ private fun SavedSetupPickerChip(
 
 /** Timer running: the current step's title with the elapsed timer inside a
  *  progress ring (the ring itself fills across the current step), then the
- *  step timeline — where the current row shows the live clock. */
+ *  step timeline: where the current row shows the live clock. */
 @Composable
 private fun RunningContent(plan: CuppingPlan, elapsedSec: Long, current: CuppingStep) {
     val next = CuppingTimeline.nextStep(current)
@@ -399,18 +509,19 @@ private fun RunningContent(plan: CuppingPlan, elapsedSec: Long, current: Cupping
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "What to do now",
+                next?.let { "Up next · ${it.title}" } ?: "Cupping complete",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // Blind sessions must not leak identities through the Done step's
-            // instruction (the colour/number wording) — swap in the neutral
-            // variant without moving any step window out of CuppingTimeline.
-            val instruction = if (plan.blind && current.isLast) {
+            // This note describes the next step. Keep the same blind-safe Done
+            // copy used by the current-step view, without changing timeline data.
+            val instruction = if (next == null) {
+                "The session has been saved."
+            } else if (plan.blind && next.isLast) {
                 blindDoneInstruction(plan.cupCount)
             } else {
-                current.instruction
+                next.instruction
             }
             Text(instruction, style = MaterialTheme.typography.bodyMedium)
         }
@@ -519,14 +630,15 @@ private fun StepLeadIcon(completed: Boolean, isCurrent: Boolean, index: Int) {
 /** Done screen: coffee identification, unless this was an empty quick-start session.
  *  Blind, un-identified sessions show positions only and offer the "Identify
  *  the cups" flow (label under each cup → position). Revealed sessions list
- *  the coffees in cup positions — [revealedCoffees] from the saved row, not
- *  the live plan — with this device's ratings inline ([ratingsByCup]). */
+ *  the coffees in cup positions: [revealedCoffees] from the saved row, not
+ *  the live plan, with this device's ratings inline ([ratingsByCup]). */
 @Composable
 private fun FinishedContent(
     vm: CuppingViewModel,
     plan: CuppingPlan,
     sessionId: String?,
     blindRevealed: Boolean,
+    sessionOrigin: SessionOrigin,
     revealedCoffees: List<CoffeeEntry>? = null,
     ratingsByCup: Map<Int, CupRating> = emptyMap(),
 ) {
@@ -553,8 +665,13 @@ private fun FinishedContent(
         when {
             plan.blind && !blindRevealed -> {
                 Text(
-                    "Coffee names stay hidden until you identify the cups. The session " +
-                        "was saved to your history.",
+                    if (sessionOrigin == SessionOrigin.JOINED) {
+                        "You can identify the cups on this device or accept a reveal " +
+                            "from the host. The session was saved to your history."
+                    } else {
+                        "Coffee names stay hidden until you identify the cups. The session " +
+                            "was saved to your history."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -582,7 +699,7 @@ private fun FinishedContent(
     }
     // Bottom actions as one full-width stack: the primary next action filled,
     // the escape hatches outlined below it. Identical rhythm in every variant
-    // (blind, revealed, empty session) — only which action is primary changes.
+    // (blind, revealed, empty session); only which action is primary changes.
     Spacer(modifier = Modifier.height(24.dp))
     if (plan.blind && !blindRevealed && sessionId != null) {
         Button(
@@ -590,6 +707,23 @@ private fun FinishedContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Identify the cups")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+    // Straight from Done into the phase-4 exchange: the host collects, a guest
+    // sends. Same entry points as the past-session detail screen.
+    if (sessionId != null && plan.coffees.isNotEmpty()) {
+        Button(
+            onClick = {
+                if (sessionOrigin == SessionOrigin.JOINED) {
+                    vm.openSendRatings(sessionId, Screen.LiveSession)
+                } else {
+                    vm.openCollectRatings(sessionId, Screen.LiveSession)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (sessionOrigin == SessionOrigin.JOINED) "Send my ratings" else "Collect ratings")
         }
         Spacer(modifier = Modifier.height(8.dp))
     }

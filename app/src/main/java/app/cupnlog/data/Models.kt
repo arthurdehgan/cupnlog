@@ -97,8 +97,9 @@ enum class SessionStatus { PLANNED, DONE }
 enum class SessionOrigin { OWN, JOINED }
 
 /**
- * One rater's scores for one cup. Attribute ratings (aroma..aftertaste) are
- * informational only; [overall] is strictly manual and never derived from them.
+ * One rater's scores for one cup. Dry aroma is captured before the timer;
+ * brewed attributes are informational only; [overall] is strictly manual and
+ * never derived from any other score.
  */
 data class CupRating(
     /** Zero-based index of the cup, matching the plan's coffees position. */
@@ -107,6 +108,8 @@ data class CupRating(
     val raterId: String,
     /** Display name at save time; follows `my_name` when known. */
     val rater: String = "",
+    /** Optional dry-ground aroma intensity scored during pre-cupping preparation. */
+    val dryAroma: Int? = null,
     val aroma: Int? = null,
     val flavor: Int? = null,
     val acidity: Int? = null,
@@ -117,8 +120,9 @@ data class CupRating(
     val notes: String = "",
 )
 
-/** The six informational attributes plus the strictly manual Overall (1–10). */
+/** Dry Aroma, the six brewed attributes and strictly manual Overall (all 1–10). */
 enum class RatingField(val label: String) {
+    DRY_AROMA("Dry aroma"),
     AROMA("Aroma"),
     FLAVOR("Flavor"),
     ACIDITY("Acidity"),
@@ -130,6 +134,7 @@ enum class RatingField(val label: String) {
 
 /** Sets one score field; a null value means "not rated". */
 fun CupRating.withScore(field: RatingField, value: Int?): CupRating = when (field) {
+    RatingField.DRY_AROMA -> copy(dryAroma = value)
     RatingField.AROMA -> copy(aroma = value)
     RatingField.FLAVOR -> copy(flavor = value)
     RatingField.ACIDITY -> copy(acidity = value)
@@ -141,6 +146,7 @@ fun CupRating.withScore(field: RatingField, value: Int?): CupRating = when (fiel
 
 /** Reads one score field, so screens need no per-field branching. */
 fun CupRating.scoreFor(field: RatingField): Int? = when (field) {
+    RatingField.DRY_AROMA -> dryAroma
     RatingField.AROMA -> aroma
     RatingField.FLAVOR -> flavor
     RatingField.ACIDITY -> acidity
@@ -151,12 +157,13 @@ fun CupRating.scoreFor(field: RatingField): Int? = when (field) {
 }
 
 /**
- * The "rated" definition: a cup counts as rated if any score (attribute,
- * overall, or notes) exists. Nothing gates the Done step on ratings.
+ * The "rated" definition: a cup counts as rated if any score (Dry Aroma,
+ * attribute, Overall, or notes) exists. Nothing gates Done on ratings.
  */
 val CupRating.isRated: Boolean
-    get() = aroma != null || flavor != null || acidity != null || sweetness != null ||
-        mouthfeel != null || aftertaste != null || overall != null || notes.isNotBlank()
+    get() = dryAroma != null || aroma != null || flavor != null || acidity != null ||
+        sweetness != null || mouthfeel != null || aftertaste != null || overall != null ||
+        notes.isNotBlank()
 
 /** A session stored in the history: planned set-ups, finished runs, joined copies. */
 data class SavedSession(
@@ -176,12 +183,16 @@ data class SavedSession(
     val sessionRef: String = "",
     /** All participants' ratings keyed by raterId (see [CupRating.raterId]). */
     val ratings: List<CupRating> = emptyList(),
-)
+) {
+    /** Stable event id carried by shares: own row id, or the host id on a joined copy. */
+    val sharedSessionId: String
+        get() = sessionRef.ifBlank { id }
+}
 
 /**
  * Planned→done conversion (user decision 3): when a run started from a planned
- * session reaches Done, the result overwrites the SAME row — same id and
- * createdAt, status flips to DONE — carrying the plan the run actually used and
+ * session reaches Done, the result overwrites the SAME row: same id and
+ * createdAt, status flips to DONE, carrying the plan the run actually used and
  * the ratings captured during it. No second artifact is ever created.
  *
  * The blind flag follows the plan the run used: editing a planned row and
@@ -193,9 +204,13 @@ fun SavedSession.toCompleted(
 ): SavedSession = copy(plan = plan, status = SessionStatus.DONE, blind = plan.blind, ratings = ratings)
 
 /**
- * Explicit blind reveal: identities become visible only by a deliberate action,
- * never automatically, and the reveal is not reversible. A second call (or a
- * call on a non-blind session) is a no-op, so revealedAtMs is set exactly once.
+ * Direct blind reveal for an owned planned session. Joined copies reveal by
+ * local matching after cupping or by accepting the host's group-results reveal.
+ * A second call (or a call on a non-blind/joined session) is a no-op.
  */
 fun SavedSession.reveal(nowMs: Long): SavedSession =
-    if (blind && revealedAtMs == null) copy(revealedAtMs = nowMs) else this
+    if (origin == SessionOrigin.OWN && blind && revealedAtMs == null) {
+        copy(revealedAtMs = nowMs)
+    } else {
+        this
+    }

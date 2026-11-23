@@ -24,6 +24,7 @@ class CuppingRepository(context: Context) {
     private val vibrateKey = booleanPreferencesKey("vibrate_on_next_step")
     private val myIdKey = stringPreferencesKey("my_id")
     private val myNameKey = stringPreferencesKey("my_name")
+    private val shareNotesKey = booleanPreferencesKey("share_notes")
 
     /** All saved sessions, newest first. */
     val sessions: Flow<List<SavedSession>> = store.data.map { prefs ->
@@ -41,6 +42,17 @@ class CuppingRepository(context: Context) {
 
     /** This device's participant display name (decided lazily, editable in Settings). */
     val myName: Flow<String> = store.data.map { prefs -> prefs[myNameKey].orEmpty() }
+
+    /**
+     * Whether this device's tasting notes are shared with the group (on by
+     * default, settled decision 8). The owner always sees its own notes
+     * locally regardless; this only controls what leaves the device.
+     */
+    val shareNotes: Flow<Boolean> = store.data.map { prefs -> prefs[shareNotesKey] ?: true }
+
+    suspend fun setShareNotes(enabled: Boolean) {
+        store.edit { prefs -> prefs[shareNotesKey] = enabled }
+    }
 
     suspend fun setSoundOn(enabled: Boolean) {
         store.edit { prefs -> prefs[soundKey] = enabled }

@@ -23,13 +23,16 @@ fun CuppingApp() {
         is Screen.StartCheck -> StartCheckScreen(vm)
         Screen.LiveSession -> SessionScreen(vm)
         Screen.Ratings -> RatingsScreen(vm)
-        Screen.Settings -> SettingsScreen(vm)
+        is Screen.Settings -> SettingsScreen(vm)
         Screen.History -> HistoryScreen(vm)
         // `screen` is a delegated property, so copy it into a local for a stable smart cast.
         is Screen.SessionDetail -> SessionDetailScreen(vm, s.sessionId)
         is Screen.IdentifyCups -> IdentifyCupsScreen(vm, s.sessionId)
         is Screen.ShareSetup -> ShareSetupScreen(vm, s.sessionId)
-        Screen.Scanner -> ScannerScreen(vm)
+        is Screen.CollectRatings -> CollectRatingsScreen(vm, s.sessionId, s.returnTo)
+        is Screen.SendRatings -> SendRatingsScreen(vm, s.sessionId, s.returnTo)
+        is Screen.QrShare -> QrShareScreen(vm, s)
+        is Screen.Scanner -> ScannerScreen(vm)
         is Screen.ImportPreview -> ImportPreviewScreen(vm)
     }
     // Session shell: owns keep-screen-on, chime playback and the Done save for
@@ -37,7 +40,7 @@ fun CuppingApp() {
     SessionShell(vm)
 
     // A deep link recognized while a live session is on screen is queued, not
-    // shown — the timer is never replaced. This prompt offers to open it now
+    // shown; the timer is never replaced. This prompt offers to open it now
     // or let it surface when the session is left (see popQueuedIncoming).
     val queuedIncoming by vm.queuedIncoming.collectAsState()
     val showQueuedDialog by vm.showQueuedDialog.collectAsState()

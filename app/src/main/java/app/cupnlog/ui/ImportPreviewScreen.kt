@@ -35,15 +35,16 @@ import app.cupnlog.ui.components.sessionSummary
 
 /**
  * Phase 3 confirm preview: shows exactly what an incoming link / scan / paste
- * carries — host name when known, what would be saved — and asks. Nothing is
+ * carries: host name when known, what would be saved, and asks. Nothing is
  * auto-saved, auto-started or auto-revealed, ever. Blind previews render
- * "Cup 1…N" only — the payload carries identities, but showing them here
+ * "Cup 1…N" only; the payload carries identities, but showing them here
  * would spoil the joiner's own blind tasting before it starts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportPreviewScreen(vm: CuppingViewModel) {
     val incoming by vm.incoming.collectAsState()
+    val history by vm.history.collectAsState()
 
     Scaffold(
         topBar = {
@@ -161,13 +162,144 @@ fun ImportPreviewScreen(vm: CuppingViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Cancel") }
                 }
+
+                is CuppingViewModel.IncomingShare.Ratings -> {
+                    val ratings = share.ratings
+                    val session = history.firstOrNull {
+                        it.id == ratings.hostSessionId || it.sessionRef == ratings.hostSessionId
+                    }
+                    if (session == null) {
+                        Text(
+                            "Can't add these ratings",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            ShareCodec.ShareError.DIFFERENT_EVENT.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("OK") }
+                    } else {
+                        if (ratings.raterName.isNotBlank()) {
+                            Text(
+                                "From ${ratings.raterName}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            session.plan.sessionName.ifBlank {
+                                "Cupping · ${session.plan.cupCount} cup" +
+                                    if (session.plan.cupCount == 1) "" else "s"
+                            },
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val cups = ratings.ratings.size
+                        Text(
+                            "$cups cup" + if (cups == 1) "" else "s" + " rated" +
+                                if (ratings.notesShared) " · notes included" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "These scores replace any earlier set from ${ratings.raterName.ifBlank { "this taster" }}.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.confirmImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Add to this session") }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Cancel") }
+                    }
+                }
+
+                is CuppingViewModel.IncomingShare.GroupResults -> {
+                    val results = share.results
+                    val session = history.firstOrNull {
+                        it.id == results.hostSessionId || it.sessionRef == results.hostSessionId
+                    }
+                    if (session == null) {
+                        Text(
+                            "Can't add these results",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            ShareCodec.ShareError.DIFFERENT_EVENT.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("OK") }
+                    } else {
+                        val raterCount = results.ratings.map { it.raterId }.distinct().size
+                        Text(
+                            "Merged results",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "$raterCount rater" + if (raterCount == 1) "" else "s" +
+                                " · ${results.ratings.size} score entries" +
+                                if (results.revealed) " · identities included" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                if (results.revealed) {
+                                    "Coffee identities from the host will be added unless " +
+                                        "you have already identified this copy."
+                                } else {
+                                    "You can identify cups on your own; the host may also " +
+                                        "include a reveal."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { vm.confirmImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Add to my session") }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { vm.dismissImport() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Cancel") }
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
-/** One preview line: "Cup 1 — Ethiopia" (names as carried by the payload). */
+/** One preview line: "Cup 1: Ethiopia" (names as carried by the payload). */
 @Composable
 private fun CupPreviewLine(index: Int, coffee: CoffeeEntry) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -178,7 +310,7 @@ private fun CupPreviewLine(index: Int, coffee: CoffeeEntry) {
             modifier = Modifier.width(72.dp),
         )
         Text(
-            if (coffee.name.isBlank()) "\u2014" else coffee.name,
+            if (coffee.name.isBlank()) "-" else coffee.name,
             style = MaterialTheme.typography.bodyLarge,
             color = if (coffee.name.isBlank()) {
                 MaterialTheme.colorScheme.onSurfaceVariant

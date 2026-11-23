@@ -11,6 +11,8 @@ json = "20240303"
 # QR generation (core: pure Java, BitMatrix) and in-app scanning (embedded).
 zxingCore = "3.5.3"
 zxingEmbedded = "4.3.0"
+# Phase 4 one-shot local wireless exchange (host collect + broadcast).
+nearbyConnections = "19.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -28,6 +30,8 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 # In-app scanner: own surface, handles the CAMERA runtime permission, offline.
 zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingEmbedded" }
+# Phase 4: peer-to-peer wireless exchange (no backend, no internet).
+nearby-connections = { group = "com.google.android.gms", name = "play-services-nearby", version.ref = "nearbyConnections" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 # Same org.json API as the Android runtime, for pure-JVM tests of the history codec.
 json = { group = "org.json", name = "json", version.ref = "json" }

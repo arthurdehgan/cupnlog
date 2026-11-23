@@ -49,7 +49,7 @@ import com.journeyapps.barcodescanner.DefaultDecoderFactory
 
 /**
  * Phase 3 join: the in-app QR scanner (user decision 7), with the paste-code
- * fallback always visible below — permission denial or a missing camera never
+ * fallback always visible below: permission denial or a missing camera never
  * gates importing. Decoded payloads go through [CuppingViewModel.handleIncoming]
  * (same codec as deep links) and always land in the confirm preview; the
  * scanner itself never saves anything. Non-CofCup codes are ignored with a

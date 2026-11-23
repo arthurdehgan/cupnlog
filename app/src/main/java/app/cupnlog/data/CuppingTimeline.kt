@@ -44,8 +44,8 @@ object CuppingTimeline {
         CuppingStep(
             title = "Break the crust (smell aromas)",
             instruction = "Put your nose close to the surface and push the crust back " +
-                "three times with the back of a spoon. The released burst of aroma is the " +
-                "strongest the coffee will give. Note the smelled aromas and rate the intensity. " +
+                "three times with the back of a spoon. The released burst of brewed aroma is the " +
+                "strongest the coffee will give. Note the aromas and rate their intensity. " +
                 "Rinse the spoon in hot water between cups, then leave the cups alone " +
                 "while the grounds sink back before you skim.",
             startSec = STEEP_SECONDS,

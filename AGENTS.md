@@ -12,8 +12,9 @@
   - `gradle :app:testDebugUnitTest`
 - Unit tests (pure JUnit, `app/src/test`, run all): `CuppingMathTest`,
   `CupColorsTest`, `HistoryCodecTest`, `BlindRedactionTest`, `PlanConversionTest`,
-  `CupMatchTest`, `CupRatingTest`, `ShareCodecTest`. A single class can be
-  selected with `--tests "app.cupnlog.CuppingMathTest"`. `HistoryCodecTest` and
+  `CupMatchTest`, `CupRatingTest`, `ShareCodecTest`, `RatingAverageTest`,
+  `RatingMergeTest`. A single class can be selected with
+  `--tests "app.cupnlog.CuppingMathTest"`. `HistoryCodecTest` and
   `ShareCodecTest` use the test-only `org.json:json` dependency (same API as the
   Android runtime).
 
@@ -36,28 +37,35 @@
 - A session is saved to history **only** when the Done step is reached (`onCuppingComplete`); leaving earlier discards it. A run without a saved setup behind it gets a fresh `UUID`; a run from a planned setup reuses that row's id (converted in place, see Persistence below).
 - "Start Cupping" on Home runs the timer with no cups (`cupCount = 0`); such a session is stored in history as an **Empty Cupping Session**. Back from an unstarted session (or confirmed "End & discard") always lands on Home.
 - The live timer increments `extraOffsetMs` on skip; elapsed time = `SystemClock.elapsedRealtime() - start + offset`. Keep this model when touching timers.
-- Step chimes fire only when the **timer itself** enters a new step (`stepChimes` flow → sound + optional vibration); skipped steps stay silent (`announcedStepStartSec` guards it). Don't chime on skip.
+- Step chimes fire only when the **timer itself** enters a new step (`stepChimes` flow → sound + optional vibration); skipped steps stay silent (`announcedStepStartSec` guards it). Sound and vibration setting changes take effect during the active session. Don't chime on skip.
+- The pre-timer screen is the optional preparation stage. Dry aroma is a separate 1–10 score on `CupRating`, saved/shared with the session; it is entered before timing and does not replace brewed Aroma. Preparation state is ViewModel-only and is discarded with an abandoned unstarted session. Keep timer `0:00` at the first pour.
+- Shared rating records include optional `dryAroma` (`da` in `ShareCodec`) alongside brewed attributes, manual Overall, and consent-controlled notes. Existing payloads without it decode as unrated.
 
 ## Blind tasting rules
 
-- In a blind session the **only** visible identity is the cup's left-to-right position ("Cup 1…N"). Names, colours and labels are private metadata — keep them out of labels, content descriptions and instruction copy on every pre-reveal surface. `data/Blind.kt` is the only route through which blind surfaces render cup identity; use its helpers (`blindedByPosition()`, `BlindCupDisplay`).
-- End-of-session identification (`data/CupMatch.kt`): the user assigns each cup position the label that was under it; confirming a complete bijection reorders the coffees so position and identity agree, then reveals. `revealedAtMs` is stamped exactly once — a later re-match only re-permutes.
-- Shared blind setups (`ShareCodec`) carry the **full coffee identities** so the joiner can run the same identify flow; the joiner's copy stays blind because `kind` marks the row blind, not because data is withheld. Don't "fix" this back to position-only payloads.
+- In a blind session the **only** visible identity is the cup's left-to-right position ("Cup 1…N"). Names, colours and labels are private metadata — keep them out of labels, content descriptions and instruction copy on every pre-reveal surface, including StartCheck. `data/Blind.kt` is the only route through which blind surfaces render cup identity; use its helpers (`blindedByPosition()`, `BlindCupDisplay`).
+- End-of-session identification (`data/CupMatch.kt`) is available on both the host's own blind session and each guest's joined blind copy: assign each cup position the label that was under it; confirming a complete bijection reorders the coffees so position and identity agree, then reveals locally. A confirmed `group_results` reveal can also reveal an unidentified joined copy. If the guest already identified locally, preserve that local mapping when results arrive. `revealedAtMs` is stamped exactly once — a later re-match only re-permutes.
+- Shared blind setups (`ShareCodec`) carry the **full coffee identities** so guests can identify their own copy and the host can later include the reveal mapping in `group_results`; the joiner's copy stays blind because `kind` marks the row blind, not because data is withheld. Don't "fix" this back to position-only payloads.
 
 ## Share / join (QR & links)
 
 - `data/ShareCodec.kt` encodes everything moved between devices. The QR encodes an **https App Link whose query string is the whole payload** (`?v=1&d=base64url(deflate(json))`) — no backend; treat that as a hard design decision.
-- Three incoming forms decode identically everywhere: the https App Link, `cofcup://import?v=1&d=…`, and the bare `d=` code. All payloads are **untrusted**: strict version/kind checks, bounded sizes, decompression-bomb cap. Validation never auto-applies anything — the caller always shows a confirm preview (`ImportPreview`) first.
-- `kind` discriminates payloads (`"setup"`, `"blind_setup"`); `"ratings"` / `"group_results"` are phase 4 and rejected here.
+- Three incoming forms decode identically everywhere: the https App Link, `cofcup://import?v=1&d=…`, and the bare `d=` code. All payloads are **untrusted**: strict version/kind checks, bounded sizes, decompression-bomb cap. Validation never auto-applies anything — every path needs a confirm step first.
+- `kind` discriminates payloads: `"setup"` / `"blind_setup"` (host → guest), `"ratings"` (guest → host, one rater's own scores), `"group_results"` (host → guests, everyone's scores plus an optional blind reveal). No other kind exists; add one only by updating this list.
+- QR/paste confirmations go through `ImportPreview`; wireless confirmations follow the same rule on their own screens (a card with Add/Skip, or "Add results to my session"). Never merge on arrival, on any transport.
+- Nearby payloads must target the currently selected session on both host and guest screens; reject a different `sid` before showing a pending card or results confirmation. A blind `group_results` reveal mapping must have exactly `cupCount` entries; malformed partial mappings leave the session unchanged.
+- A ratings re-submission replaces that rater's entire set, including when the new set is empty. `group_results` is a complete snapshot: replace all remote ratings while preserving this device's own ratings and notes.
 
 ## Persistence & UI structure
 
 - History is a JSON array in **DataStore** (`CuppingRepository`, store `cupnlog_store`, key `history_v1`) parsed with `org.json`; decode failures return an empty list; capped at 200 sessions (`MAX_STORED_SESSIONS`). The same store holds the chime toggles (`sound_on_next_step` on by default, `vibrate_on_next_step` off) and the profile (`my_id` — random UUID generated on first use, `my_name`). There is no Room/DB and no serialization plugin — don't add either for this.
 - The `my_name` Settings field must **not** bind straight to the DataStore flow: a disk round-trip per keystroke loses/reorders fast input ("Arthur" → "ruA"). It edits a VM-held synchronous `MutableStateFlow` (`_myName`, hydrated once at init; `setMyName` updates it immediately and persists in the background — live copy untrimmed, stored copy trimmed/capped at `MY_NAME_MAX_LENGTH`). Same pattern applies to any future text field bound to persisted state.
 - The history list doubles as the **planned-setups store**: rows are `SessionStatus.PLANNED` or `DONE` in the same array. Running a planned setup converts that row **in place** on Done (same id/`createdAtMs`, status → DONE) via `plannedSessionId`/`savedSessionId` — it doesn't spawn a second row.
-- Screens are one file per screen in `ui/`, orchestrated by a single `CuppingViewModel` (`Screen` sealed interface + `handleBack()`); no navigation-compose dependency. Multi-step screens carry a `returnTo` so back stays sensible when opened from multiple places (StartCheck, IdentifyCups, ShareSetup, ImportPreview). Settings is only reachable from the live-session screens (gear icon; back returns to LiveSession). Ratings has two entry modes (BY_CUP / BY_CATEGORY) that are session-scoped view-model state, never persisted; leaving Ratings after Done re-persists the edits.
+- Screens are one file per screen in `ui/`, orchestrated by a single `CuppingViewModel` (`Screen` sealed interface + `handleBack()`); no navigation-compose dependency. Multi-step screens carry a `returnTo` so back stays sensible when opened from multiple places (StartCheck, IdentifyCups, ShareSetup, ImportPreview, Scanner, CollectRatings, SendRatings). Settings is reachable from Home and the live-session screens (gear icon); Back returns to the screen it was opened from. Ratings has two entry modes (BY_CUP / BY_CATEGORY) that are session-scoped view-model state, never persisted; leaving Ratings after Done re-persists the edits.
+- The QR block is reusable (`ui/ShareQrBlock.kt`: QR card + share-as-text + copy-link + bare code); both the setup share and the ratings / merged-results screens use it. Phase-4 ratings exchange: `data/NearbyExchange.kt` (Nearby Connections, P2P_STAR for the host and its multiple guests), `data/RatingMerge.kt` (pure merge/reveal rules shared by every confirm path), `ui/CollectRatingsScreen.kt` (host), `ui/SendRatingsScreen.kt` (guest). Both sides accept in `onConnectionInitiated` — the initiator's `PayloadCallback` is registered there (play-services-nearby's `requestConnection` has no payload-callback parameter), so removing that accept breaks the guest's ability to receive the merged results.
 - On Home the launcher icon is rendered via AndroidView + ImageView: `painterResource()` would **crash** on the adaptive `mipmap` icon (this exact crash was fixed once — don't revert it).
 - Manifest: portrait-locked `singleTask` activity; deep links `cofcup://import` and the autoVerify https App Link land in `MainActivity` (the scanner screen never saves anything itself — payloads go through the view model's confirm preview); permissions are VIBRATE (chime) and CAMERA (in-app QR scanner), with `android.hardware.camera` marked `required="false"`. The session screen sets `view.keepScreenOn`. All intentional — ask before changing.
+- Phase 4 adds the Nearby runtime permissions (BLUETOOTH_SCAN/CONNECT/ADVERTISE on S+, `NEARBY_WIFI_DEVICES` on T+, `ACCESS_LOCAL_NETWORK` on 37+, coarse/fine location only on older levels) — requested by `nearbyRuntimePermissions()` when a collect/send screen opens; denial only disables wireless (the QR fallback stays). No INTERNET permission: the exchange is peer-to-peer.
 
 ## Commit hygiene
 

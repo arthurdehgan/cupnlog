@@ -12,7 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Phase 2: the "rated" definition (any score — attribute, overall, or notes —
+ * Phase 2: the "rated" definition (any score, attribute, overall, or notes
  * exists) and the per-field accessors the rating screens are built on.
  */
 class CupRatingTest {

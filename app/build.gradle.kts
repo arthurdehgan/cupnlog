@@ -51,6 +51,7 @@ dependencies {
 
     implementation(libs.zxing.core)
     implementation(libs.zxing.android.embedded)
+    implementation(libs.nearby.connections)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

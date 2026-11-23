@@ -1,6 +1,7 @@
 package app.cupnlog.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -32,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.cupnlog.data.CuppingMath
+import app.cupnlog.data.blindedByPosition
 import app.cupnlog.ui.components.SwatchCircle
 import app.cupnlog.ui.components.StatLine
 
@@ -107,12 +111,32 @@ fun StartCheckScreen(vm: CuppingViewModel) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        plan.coffees.forEach { coffee ->
-                            SwatchCircle(
-                                colorArgb = coffee.colorArgb,
-                                insideText = coffee.displayLabel,
-                                size = 36.dp,
-                            )
+                        if (plan.blind) {
+                            plan.coffees.blindedByPosition().forEach { cup ->
+                                Surface(
+                                    modifier = Modifier.height(36.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 8.dp),
+                                    ) {
+                                        Text(
+                                            cup.label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            plan.coffees.forEach { coffee ->
+                                SwatchCircle(
+                                    colorArgb = coffee.colorArgb,
+                                    insideText = coffee.displayLabel,
+                                    size = 36.dp,
+                                )
+                            }
                         }
                     }
                 }

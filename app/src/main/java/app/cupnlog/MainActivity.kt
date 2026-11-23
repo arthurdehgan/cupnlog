@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Hands the intent's data string to the application holder — no parsing
+     * Hands the intent's data string to the application holder: no parsing
      * here. The view model collects it and routes through the share codec
      * (queueing during a live session, confirm preview otherwise).
      */
