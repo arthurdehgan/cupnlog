@@ -43,6 +43,12 @@ and read the latest sound/vibration settings during a live session. The scanner
 preserves `returnTo`, both share screens expose the notes toggle, and both sides
 accept the Nearby connection so the guest can receive the broadcast.
 
+**Recent follow-ups implemented (2026-11-22):** Settings shows the installed
+version and build number. The pre-timer session screen is now an optional
+preparation stage, with a blind-cup shuffle checklist and separate Dry Aroma
+scores that persist and share with the completed session. The live timer note
+now previews the next step and shows a saved-completion message at the end.
+
 **Blind identity audit follow-ups implemented (2026-11-22):** StartCheck renders
 blind cups by position only. Joined blind copies support local identification;
 later host results preserve the guest's local mapping.
