@@ -1,8 +1,8 @@
-name: Deploy landing page to GitHub Pages
+name: Deploy app-link redirect to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths: ["pages/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
