@@ -11,6 +11,9 @@ A free, open-source Android app that guides you through a **coffee cupping sessi
   150 ml.
 - Give coffees names, numbers, and colors, or make the session blind. Setups
   can be saved for later; completed sessions appear in History.
+- Before the timer starts, optionally shuffle blind cups and rate each cup's
+  dry-ground aroma intensity. Dry Aroma is a separate 1–10 score from the
+  brewed aroma.
 - Follow the guided timeline for pouring, breaking the crust, cleaning the
   cups, and tasting. The timer starts at 0:00 when water first hits the
   grounds. Chimes and vibration can be configured in Settings.
@@ -24,7 +27,8 @@ A free, open-source Android app that guides you through a **coffee cupping sessi
   participants' ratings over Nearby Connections or QR, then share the group
   results. Imports and merges require confirmation.
 - Browse planned setups and completed sessions in History. Review ratings and
-  notes or remove sessions you no longer need.
+  notes or remove sessions you no longer need. Settings shows the installed
+  version and build number and controls chime, vibration, and note-sharing.
 
 ## The cupping timeline used (0:00 = first water hits the grounds)
 
@@ -68,13 +72,6 @@ gradle :app:testDebugUnitTest   # runs the ratio/timeline maths unit tests
 
 ## Roadmap
 
-- Optional pre-cupping preparation before the timer, including dry-aroma
-  rating and a blind-tasting cup shuffle. Design how preparation is entered,
-  skipped, and saved, and whether dry aroma uses the existing Aroma score.
-- An About section in Settings with the app version and build number, so
-  participants can compare builds during development.
-- Show the upcoming step's instruction in the timer screen's bottom note;
-  decide what to show at the final step and after skipping a step.
 - Screen to freely walk the timeline while keeping the session alive mid-cupping (wizard re-entry)
 - Localisation (English UI today)
 
