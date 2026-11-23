@@ -70,7 +70,7 @@ fun CollectRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Scre
     val shareNotes by vm.shareNotes.collectAsState()
     val session = history.firstOrNull { it.id == sessionId }
 
-    val state = remember { HostExchangeState() }
+    val state = vm.hostExchangeState
     val exchange = remember { NearbyExchange(context) }
     val status by state.status.collectAsState()
     val pending by state.pending.collectAsState()
@@ -272,12 +272,19 @@ fun CollectRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Scre
             ) { Text("Show merged results") }
 
             results?.let { encode ->
-                Spacer(modifier = Modifier.height(24.dp))
-                ShareQrBlock(
-                    encode = encode,
-                    title = "Merged results",
-                    subtitle = "Tasters still connected get this wirelessly; others can scan this QR.",
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = {
+                        vm.openQrShare(
+                            encode = encode,
+                            title = "Merged results",
+                            subtitle = "Tasters still connected get this wirelessly; " +
+                                "others can scan this QR.",
+                            returnTo = Screen.CollectRatings(sessionId, returnTo),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Show merged-results QR") }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -290,11 +297,18 @@ fun CollectRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Scre
     }
 }
 
-private class HostExchangeState {
+internal class HostExchangeState {
     val status = MutableStateFlow("Starting…")
     val connected = MutableStateFlow(0)
     val pending = MutableStateFlow<List<ShareCodec.SharedRatings>>(emptyList())
     val resultsEncode = MutableStateFlow<ShareCodec.ShareEncode?>(null)
+
+    fun reset() {
+        status.value = "Starting…"
+        connected.value = 0
+        pending.value = emptyList()
+        resultsEncode.value = null
+    }
 }
 
 /** The per-person notes toggle, shared by the collect and send screens. */

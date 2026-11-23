@@ -3,10 +3,113 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Opening CofCup</title>
-  <script>
-    window.location.replace(`cofcup://import${window.location.search}${window.location.hash}`)
-  </script>
+  <title>Cup 'n Log — open your cupping setup</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #8b5e3c;
+      --muted: #6b625c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --muted: #b3a79e; }
+    }
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 34rem;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      line-height: 1.6;
+    }
+    h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+    p.sub { color: var(--muted); margin-top: 0; }
+    p.actions { margin: 1.5rem 0 1rem; }
+    a.button {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.75rem;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      margin: 0 0.5rem 0.5rem 0;
+    }
+    a.button.secondary {
+      background: transparent;
+      color: inherit;
+      box-shadow: inset 0 0 0 1px var(--muted);
+    }
+    p.note { color: var(--muted); font-size: 0.95rem; }
+  </style>
 </head>
-<body></body>
+<body>
+  <h1>Cup 'n Log</h1>
+  <p class="sub">Guided coffee cupping, step by step, with timers following the SCA protocol.</p>
+
+  <p>This link carries a cupping setup inside it. If Cup 'n Log is installed it opens
+    now; if not, install it below and tap the link again. Nothing is stored online.</p>
+
+  <p class="actions">
+    <!-- Keep this URL in sync with pages/index.html. For now the latest GitHub
+         release APK; once the app is published, point it at the store listing:
+           Play Store: https://play.google.com/store/apps/details?id=app.cupnlog
+           F-Droid:    https://f-droid.org/packages/app.cupnlog/ -->
+    <a id="download" class="button" href="https://github.com/arthurdehgan/cupnlog/releases/latest/download/app-debug.apk" download>Download the latest APK</a>
+    <a id="open-app" class="button secondary" href="cofcup://import">Open in Cup 'n Log</a>
+  </p>
+
+  <p id="install-note" class="note">Android may ask you to allow installs from this
+    source (Chrome → Settings → Install unknown apps).</p>
+
+  <script>
+    (function () {
+      var downloadLink = document.getElementById('download');
+      var openAppLink = document.getElementById('open-app');
+      var note = document.getElementById('install-note');
+      var downloadUrl = downloadLink.href;
+      var appUrl = 'cofcup://import' + window.location.search + window.location.hash;
+      var handedOff = false;
+      var downloadStarted = false;
+
+      openAppLink.href = appUrl;
+
+      // A successful hand-off sends this page to the background; a blocked one
+      // leaves it visible.
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') handedOff = true;
+      });
+      downloadLink.addEventListener('click', function () { downloadStarted = true; });
+
+      function startDownload() {
+        if (downloadStarted) return;
+        downloadStarted = true;
+        var link = document.createElement('a');
+        link.href = downloadUrl;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        note.textContent = 'Your download should start automatically. If it did not, tap ' +
+          '"Download the latest APK" above. Android may ask you to allow installs from ' +
+          'this source (Chrome → Settings → Install unknown apps).';
+      }
+
+      // Best-effort hand-off; a blocked custom scheme leaves this page untouched.
+      var handoffFrame = document.createElement('iframe');
+      handoffFrame.hidden = true;
+      handoffFrame.src = appUrl;
+      document.body.appendChild(handoffFrame);
+
+      // Still here after the hand-off window: assume the app is not installed.
+      setTimeout(function () {
+        if (handedOff) return;
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+          note.textContent = "Cup 'n Log is Android-only for now.";
+          return;
+        }
+        startDownload();
+      }, 1500);
+    })();
+  </script>
+</body>
 </html>

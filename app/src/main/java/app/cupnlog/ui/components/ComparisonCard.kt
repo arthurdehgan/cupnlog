@@ -1,5 +1,7 @@
 package app.cupnlog.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,14 +12,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,8 +44,9 @@ import app.cupnlog.data.scoreFor
 
 /**
  * Rater-aware comparison for a done session's detail screen (phase 4). Per
- * cup: a bold average of the manual Overall scores, one box per rater with its
- * score (or a quiet dash), then the viewer's own six attribute chips and notes.
+ * cup: a bold average of the manual Overall scores and one box per rater with
+ * its score (or a quiet dash). The viewer's own attribute chips, dry aroma and
+ * notes unfold behind an arrow, matching the end-of-session coffee list.
  * Built rater-aware from day one so a future transport slots in without a
  * redesign.
  *
@@ -89,7 +101,17 @@ private fun CupComparisonRow(
 ) {
     val average = RatingAverages.averageOverall(entries)
     val mine = entries.firstOrNull { it.raterId == myId }
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // Same expand contract as the end-of-session coffee list: the summary
+    // (average + one box per rater) stays visible, the viewer's own attribute
+    // scores / dry aroma / notes unfold behind the arrow.
+    val canExpand = mine != null && mine.isRated
+    var expanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .then(if (canExpand) Modifier.clickable { expanded = !expanded } else Modifier),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SwatchCircle(
                 colorArgb = colorArgb,
@@ -103,6 +125,19 @@ private fun CupComparisonRow(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
+            if (canExpand) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = if (expanded) {
+                        Icons.Default.KeyboardArrowDown
+                    } else {
+                        Icons.Default.KeyboardArrowRight
+                    },
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
         // Average first, then one overall box per rater (scrollable if many).
@@ -142,8 +177,8 @@ private fun CupComparisonRow(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        if (mine != null && mine.isRated) {
+        if (expanded && mine != null) {
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -167,7 +202,7 @@ private fun CupComparisonRow(
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(mine.notes, style = MaterialTheme.typography.bodySmall)
             }
-        } else {
+        } else if (!canExpand) {
             Text(
                 "No rating",
                 style = MaterialTheme.typography.bodySmall,

@@ -31,6 +31,7 @@ fun CuppingApp() {
         is Screen.ShareSetup -> ShareSetupScreen(vm, s.sessionId)
         is Screen.CollectRatings -> CollectRatingsScreen(vm, s.sessionId, s.returnTo)
         is Screen.SendRatings -> SendRatingsScreen(vm, s.sessionId, s.returnTo)
+        is Screen.QrShare -> QrShareScreen(vm, s)
         is Screen.Scanner -> ScannerScreen(vm)
         is Screen.ImportPreview -> ImportPreviewScreen(vm)
     }

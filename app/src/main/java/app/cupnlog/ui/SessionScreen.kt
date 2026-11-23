@@ -710,6 +710,23 @@ private fun FinishedContent(
         }
         Spacer(modifier = Modifier.height(8.dp))
     }
+    // Straight from Done into the phase-4 exchange: the host collects, a guest
+    // sends. Same entry points as the past-session detail screen.
+    if (sessionId != null && plan.coffees.isNotEmpty()) {
+        Button(
+            onClick = {
+                if (sessionOrigin == SessionOrigin.JOINED) {
+                    vm.openSendRatings(sessionId, Screen.LiveSession)
+                } else {
+                    vm.openCollectRatings(sessionId, Screen.LiveSession)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (sessionOrigin == SessionOrigin.JOINED) "Send my ratings" else "Collect ratings")
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
     Button(
         onClick = { vm.goHomeAfterSession() },
         modifier = Modifier.fillMaxWidth(),

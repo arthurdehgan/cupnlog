@@ -88,6 +88,19 @@ sealed interface Screen {
     data class SendRatings(val sessionId: String, val returnTo: Screen) : Screen
 
     /**
+     * Phase 4 QR fallback surface: the big QR plus share-as-text / copy-link /
+     * bare-code options for an already-encoded payload (a taster's ratings, or
+     * the host's merged results). The collect/send screens stay uncluttered and
+     * open this on demand; `returnTo` keeps `handleBack()` sensible.
+     */
+    data class QrShare(
+        val encode: ShareCodec.ShareEncode,
+        val title: String,
+        val subtitle: String? = null,
+        val returnTo: Screen,
+    ) : Screen
+
+    /**
      * Phase 3 join: in-app QR scanner with the paste-code fallback below it.
      * Decoded payloads go through [CuppingViewModel.handleIncoming] and the
      * confirm preview: the scanner itself never saves anything. `returnTo`
@@ -223,6 +236,15 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
      * the first pick; cleared again on cancel and when the session is reset.
      */
     private var liveBeforeSelection: Pair<LiveSession, CuppingDraft>? = null
+
+    /**
+     * Phase 4 collect/send screen state. Kept in the view model (not the
+     * composable) so a detour to the QR fallback screen doesn't drop received
+     * ratings, results, or the merged-results QR on the floor. Reset whenever
+     * the corresponding screen is opened for a session.
+     */
+    internal val hostExchangeState = HostExchangeState()
+    internal val guestExchangeState = GuestExchangeState()
 
     private val _stepChimes = MutableSharedFlow<Unit>(
         replay = 0,
@@ -550,12 +572,24 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
 
     /** Host: collect tasters' ratings wirelessly (session detail entry point). */
     fun openCollectRatings(sessionId: String, returnTo: Screen = Screen.History) {
+        hostExchangeState.reset()
         _screen.value = Screen.CollectRatings(sessionId, returnTo)
     }
 
     /** Guest: send this device's ratings to the host wirelessly (session detail). */
     fun openSendRatings(sessionId: String, returnTo: Screen = Screen.History) {
+        guestExchangeState.reset()
         _screen.value = Screen.SendRatings(sessionId, returnTo)
+    }
+
+    /** Opens the QR/text fallback surface for an encoded payload. */
+    fun openQrShare(
+        encode: ShareCodec.ShareEncode,
+        title: String,
+        subtitle: String? = null,
+        returnTo: Screen,
+    ) {
+        _screen.value = Screen.QrShare(encode, title, subtitle, returnTo)
     }
 
     /**
@@ -642,6 +676,10 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
                 true
             }
             is Screen.SendRatings -> {
+                _screen.value = current.returnTo
+                true
+            }
+            is Screen.QrShare -> {
                 _screen.value = current.returnTo
                 true
             }
@@ -975,9 +1013,20 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
                 }
 
                 is IncomingShare.GroupResults -> {
+                    // The preview only offers Add when the matching local row
+                    // exists, so resolve it before the merge write.
+                    val hostId = incoming.results.hostSessionId
+                    val localId = repository.sessions.first().firstOrNull {
+                        it.id == hostId || it.sessionRef == hostId
+                    }?.id
                     mergeGroupResults(incoming.results)
                     _incoming.value = null
-                    _screen.value = (_screen.value as? Screen.ImportPreview)?.returnTo ?: Screen.Home
+                    // Done: land on the affected session so the merged
+                    // comparison is the confirmation. The generic returnTo
+                    // would drop a guest back on the send screen (or Home),
+                    // which reads as "nothing happened".
+                    _screen.value = localId?.let { Screen.SessionDetail(it) }
+                        ?: (_screen.value as? Screen.ImportPreview)?.returnTo ?: Screen.Home
                 }
 
                 is IncomingShare.Error -> {
@@ -1205,6 +1254,10 @@ class CuppingViewModel(application: Application) : AndroidViewModel(application)
             // The draft is persisted: void any unstarted run still holding it
             // in memory (same contract as [saveSetup]).
             _live.value?.let { if (it.startedAtMs == null && !it.finished) resetLiveSession() }
+            // resetLiveSession clears the run source, so point it at the row we
+            // just shared: the run that follows must convert THAT row on Done,
+            // otherwise guests' copies (sessionRef = this id) can never match.
+            _plannedRunSource.value = id
             _screen.value = Screen.ShareSetup(sessionId = id, returnTo = current)
         }
     }

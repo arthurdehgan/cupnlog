@@ -56,7 +56,7 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
     val history by vm.history.collectAsState()
     val session = history.firstOrNull { it.id == sessionId }
 
-    val state = remember { GuestExchangeState() }
+    val state = vm.guestExchangeState
     val exchange = remember { NearbyExchange(context) }
     val status by state.status.collectAsState()
     val sent by state.sent.collectAsState()
@@ -247,6 +247,7 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
             }
 
             // QR fallback: this device's ratings as a code the host can scan.
+            // The QR itself lives on its own screen, opened on demand.
             val myId by vm.myId.collectAsState()
             val myName by vm.myName.collectAsState()
             val shareNotes by vm.shareNotes.collectAsState()
@@ -256,11 +257,18 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
                 else ShareCodec.encodeRatings(session, raterId, myName, shareNotes)
             }
             if (myRatingsEncode != null) {
-                ShareQrBlock(
-                    encode = myRatingsEncode,
-                    title = "Or share my ratings as a QR",
-                    subtitle = "The host scans this to collect your ratings without wireless.",
-                )
+                OutlinedButton(
+                    onClick = {
+                        vm.openQrShare(
+                            encode = myRatingsEncode,
+                            title = "My ratings",
+                            subtitle = "The host scans this to collect your ratings " +
+                                "without wireless.",
+                            returnTo = Screen.SendRatings(sessionId, returnTo),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Show my ratings QR") }
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
@@ -284,8 +292,14 @@ fun SendRatingsScreen(vm: CuppingViewModel, sessionId: String, returnTo: Screen)
     }
 }
 
-private class GuestExchangeState {
+internal class GuestExchangeState {
     val status = MutableStateFlow("Starting…")
     val sent = MutableStateFlow(false)
     val received = MutableStateFlow<ShareCodec.SharedGroupResults?>(null)
+
+    fun reset() {
+        status.value = "Starting…"
+        sent.value = false
+        received.value = null
+    }
 }

@@ -14,8 +14,10 @@
     <!-- Phase 4: one-shot local wireless exchange (Nearby Connections). Normal
          (auto-granted) permissions first; the dangerous ones are requested at
          runtime by the collect/send screens (see nearbyRuntimePermissions). -->
-    <uses-permission android:maxSdkVersion="32" android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:maxSdkVersion="32" android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Nearby Connections checks ACCESS_WIFI_STATE at every API level (error
+         8032 when it is missing), so neither Wi-Fi permission is capped. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:maxSdkVersion="30" android:name="android.permission.BLUETOOTH" />
     <uses-permission android:maxSdkVersion="30" android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:maxSdkVersion="32" android:name="android.permission.ACCESS_COARSE_LOCATION" />
