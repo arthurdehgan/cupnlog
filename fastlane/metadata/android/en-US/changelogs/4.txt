@@ -1,0 +1,1 @@
+Wireless ratings exchange between devices, using Nearby Connections with no internet: the host collects every guest's scores and everyone gets a group comparison. Guests can identify their own blind cups locally, and the host's confirmed reveal travels with the merged results.
